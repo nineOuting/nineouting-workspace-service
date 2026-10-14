@@ -1,0 +1,27 @@
+server:
+  port: ${SERVER_PORT:8082}
+
+spring:
+  application:
+    name: workspace-service
+  config:
+    import: classpath:observability/defaults.yml
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3308/workspace_db}
+    username: ${DB_USERNAME:workspace_service}
+    password: ${DB_PASSWORD:workspace_service}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate   # 스키마는 Flyway만 바꾼다
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+
+nineouting:
+  security:
+    jwt:
+      jwks-uri: ${JWT_JWKS_URI:http://localhost:8081/.well-known/jwks.json}
+  workspace:
+    frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
+    invite-link-ttl: 1d
+    user-service-url: ${USER_SERVICE_URL:http://localhost:8081}
