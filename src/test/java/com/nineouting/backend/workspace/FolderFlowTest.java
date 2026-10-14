@@ -176,6 +176,7 @@ class FolderFlowTest extends ApiTestSupport {
         mockMvc.perform(getRequest("/internal/folders/" + project + "/members"))
                 .andExpect(jsonPath("$.data", containsInAnyOrder(owner.intValue(), member.intValue())));
         mockMvc.perform(getRequest("/internal/users/" + member + "/folders"))
-                .andExpect(jsonPath("$.data.length()").value(2));
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].workspaceName").value("팀 워크스페이스"));
     }
 }
