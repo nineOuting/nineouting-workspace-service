@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 
 /**
  * workspace-service 에러 코드 (docs/services/workspace-service.md 4.6).
+ * user-service 연결 실패(503)는 client-common의 ClientErrorCode를 쓴다.
  */
 @Getter
 @RequiredArgsConstructor
@@ -23,8 +24,7 @@ public enum WorkspaceErrorCode implements ErrorCode {
     ADMIN_CANNOT_LEAVE(HttpStatus.BAD_REQUEST, "관리자 권한을 양도한 뒤에 나갈 수 있습니다"),
     FOLDER_OWNERSHIP_REMAINING(HttpStatus.BAD_REQUEST, "소유한 폴더를 다른 멤버에게 양도한 뒤에 나갈 수 있습니다"),
     NOT_FOLDER_MEMBER(HttpStatus.BAD_REQUEST, "폴더 멤버가 아닙니다"),
-    ALREADY_FOLDER_MEMBER(HttpStatus.CONFLICT, "이미 폴더 멤버입니다"),
-    USER_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "사용자 정보를 불러올 수 없습니다. 잠시 후 다시 시도해 주세요");
+    ALREADY_FOLDER_MEMBER(HttpStatus.CONFLICT, "이미 폴더 멤버입니다");
 
     private final HttpStatus status;
     private final String message;

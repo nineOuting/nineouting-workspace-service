@@ -10,10 +10,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.jayway.jsonpath.JsonPath;
+import com.nineouting.backend.common.client.UserClient;
+import com.nineouting.backend.common.client.UserSummary;
 import com.nineouting.backend.common.outbox.OutboxEventRepository;
 import com.nineouting.backend.workspace.TestcontainersConfiguration.MutableClock;
-import com.nineouting.backend.workspace.client.UserClient;
-import com.nineouting.backend.workspace.client.UserSummary;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
