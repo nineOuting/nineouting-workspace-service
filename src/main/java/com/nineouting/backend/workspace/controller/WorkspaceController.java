@@ -95,7 +95,7 @@ public class WorkspaceController {
         return ApiResponse.ok(membershipService.members(workspaceId, user.userId()));
     }
 
-    /** REQ-117. 경로가 더 구체적이라 아래 {userId}보다 먼저 맞는다. */
+    /** REQ-118. 경로가 더 구체적이라 아래 {userId}보다 먼저 맞는다. */
     @DeleteMapping("/{workspaceId}/members/me")
     public ApiResponse<Void> leave(@CurrentUser AuthenticatedUser user, @PathVariable Long workspaceId) {
         membershipService.leave(workspaceId, user.userId());

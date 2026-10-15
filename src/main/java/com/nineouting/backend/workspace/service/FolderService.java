@@ -37,7 +37,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 프로젝트 폴더·하위 폴더 (REQ-036~045, 114, 116), 최근 프로젝트 (REQ-024).
+ * 프로젝트 폴더·하위 폴더 (REQ-036~045, 115, 117), 최근 프로젝트 (REQ-024).
  */
 @Service
 @RequiredArgsConstructor
@@ -130,7 +130,7 @@ public class FolderService {
         return node(folder, true, List.of());
     }
 
-    /** REQ-114. 소유자만, 하위 폴더까지 함께 지우고 안의 회의·회의록을 지우도록 이벤트를 보낸다. */
+    /** REQ-115. 소유자만, 하위 폴더까지 함께 지우고 안의 회의·회의록을 지우도록 이벤트를 보낸다. */
     @Transactional
     public void delete(Long folderId, Long userId) {
         Folder folder = folderAccess.requireFolder(folderId);
@@ -195,7 +195,7 @@ public class FolderService {
         folderMemberRepository.delete(member);
     }
 
-    /** REQ-116. 초대된 폴더 멤버에게만 넘길 수 있고, 넘긴 사람은 일반 폴더 멤버로 남는다. */
+    /** REQ-117. 초대된 폴더 멤버에게만 넘길 수 있고, 넘긴 사람은 일반 폴더 멤버로 남는다. */
     @Transactional
     public void transferOwner(Long folderId, Long ownerUserId, Long targetUserId) {
         Folder folder = folderAccess.requireOwner(folderId, ownerUserId);
