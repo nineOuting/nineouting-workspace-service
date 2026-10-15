@@ -1,17 +1,17 @@
 package com.nineouting.backend.workspace.service;
 
+import com.nineouting.backend.common.client.UserClient;
+import com.nineouting.backend.common.client.UserSummary;
 import com.nineouting.backend.common.event.workspace.FolderDeleted;
 import com.nineouting.backend.common.outbox.OutboxEventWriter;
 import com.nineouting.backend.common.web.error.BusinessException;
 import com.nineouting.backend.common.web.error.CommonErrorCode;
-import com.nineouting.backend.workspace.client.UserClient;
-import com.nineouting.backend.workspace.client.UserSummary;
 import com.nineouting.backend.workspace.domain.Folder;
 import com.nineouting.backend.workspace.domain.FolderMember;
 import com.nineouting.backend.workspace.domain.FolderVisit;
 import com.nineouting.backend.workspace.domain.Workspace;
-import com.nineouting.backend.workspace.dto.FolderDetailResponse;
 import com.nineouting.backend.workspace.dto.FolderDetailResponse.PathItem;
+import com.nineouting.backend.workspace.dto.FolderDetailResponse;
 import com.nineouting.backend.workspace.dto.FolderMemberResponse;
 import com.nineouting.backend.workspace.dto.FolderNode;
 import com.nineouting.backend.workspace.dto.RecentFolderResponse;

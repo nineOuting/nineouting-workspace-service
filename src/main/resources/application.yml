@@ -24,4 +24,5 @@ nineouting:
   workspace:
     frontend-base-url: ${FRONTEND_BASE_URL:http://localhost:5173}
     invite-link-ttl: 1d
+  clients:
     user-service-url: ${USER_SERVICE_URL:http://localhost:8081}

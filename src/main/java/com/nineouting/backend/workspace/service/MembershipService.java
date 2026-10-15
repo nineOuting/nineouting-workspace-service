@@ -1,12 +1,12 @@
 package com.nineouting.backend.workspace.service;
 
+import com.nineouting.backend.common.client.UserClient;
+import com.nineouting.backend.common.client.UserSummary;
 import com.nineouting.backend.common.event.workspace.MemberJoinApproved;
 import com.nineouting.backend.common.event.workspace.MemberJoinRequested;
 import com.nineouting.backend.common.outbox.OutboxEventWriter;
 import com.nineouting.backend.common.web.error.BusinessException;
 import com.nineouting.backend.common.web.error.CommonErrorCode;
-import com.nineouting.backend.workspace.client.UserClient;
-import com.nineouting.backend.workspace.client.UserSummary;
 import com.nineouting.backend.workspace.config.WorkspaceProperties;
 import com.nineouting.backend.workspace.domain.Folder;
 import com.nineouting.backend.workspace.domain.FolderMember;
