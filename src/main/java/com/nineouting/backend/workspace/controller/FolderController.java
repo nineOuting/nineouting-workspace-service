@@ -57,7 +57,7 @@ public class FolderController {
         return ApiResponse.ok(folderService.rename(folderId, user.userId(), request.name()));
     }
 
-    /** REQ-114 */
+    /** REQ-115 */
     @DeleteMapping("/api/folders/{folderId}")
     public ApiResponse<Void> delete(@CurrentUser AuthenticatedUser user, @PathVariable Long folderId) {
         folderService.delete(folderId, user.userId());
@@ -85,7 +85,7 @@ public class FolderController {
         return ApiResponse.ok();
     }
 
-    /** REQ-116 */
+    /** REQ-117 */
     @PutMapping("/api/folders/{folderId}/owner")
     public ApiResponse<Void> transferOwner(@CurrentUser AuthenticatedUser user, @PathVariable Long folderId,
                                            @Valid @RequestBody UserIdRequest request) {

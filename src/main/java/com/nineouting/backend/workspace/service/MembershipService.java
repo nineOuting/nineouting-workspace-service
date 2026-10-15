@@ -41,7 +41,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 초대 링크·참여 요청 (REQ-015~017, 033, 034), 멤버 관리 (REQ-032, 035), 나가기 (REQ-117).
+ * 초대 링크·참여 요청 (REQ-015~017, 033, 034), 멤버 관리 (REQ-032, 035), 나가기 (REQ-118).
  */
 @Service
 @RequiredArgsConstructor
@@ -182,7 +182,7 @@ public class MembershipService {
         target.changeRole(WorkspaceRole.ADMIN);
     }
 
-    /** REQ-117. 관리자는 양도한 뒤에, 폴더 소유자는 폴더를 양도한 뒤에 나갈 수 있다. */
+    /** REQ-118. 관리자는 양도한 뒤에, 폴더 소유자는 폴더를 양도한 뒤에 나갈 수 있다. */
     @Transactional
     public void leave(Long workspaceId, Long userId) {
         WorkspaceMember member = folderAccess.requireMember(workspaceId, userId);
