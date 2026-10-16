@@ -38,6 +38,10 @@ class FolderFlowTest extends ApiTestSupport {
         createFolder(workspaceId, owner, "회의", b);
         call(owner, post("/api/workspaces/" + workspaceId + "/folders"), "{\"name\":\"회의\",\"parentId\":%d}".formatted(a))
                 .andExpect(jsonPath("$.code").value("FOLDER_NAME_DUPLICATED"));
+        // 대소문자만 다른 이름도 같은 이름으로 본다
+        createFolder(workspaceId, owner, "Design", null);
+        call(owner, post("/api/workspaces/" + workspaceId + "/folders"), "{\"name\":\"design\"}")
+                .andExpect(jsonPath("$.code").value("FOLDER_NAME_DUPLICATED"));
     }
 
     @Test

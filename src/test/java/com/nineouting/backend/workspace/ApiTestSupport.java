@@ -34,7 +34,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 /**
- * 실제 MySQL·Kafka와 security-common 토큰 검증을 거치는 API 테스트의 공통 도우미.
+ * 실제 PostgreSQL·Kafka와 security-common 토큰 검증을 거치는 API 테스트의 공통 도우미.
  * user-service는 띄우지 않고 UserClient를 가짜로 바꾼다 (이름: user{ID}, 이메일: user{ID}@example.com).
  */
 // outbox는 보낸 이벤트를 바로 지우므로, 발행한 이벤트를 테이블에서 확인하려고 테스트에서는 전송을 멈춘다
