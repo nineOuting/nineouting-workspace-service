@@ -16,11 +16,11 @@ import org.springframework.boot.testcontainers.service.connection.ServiceConnect
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.testcontainers.kafka.KafkaContainer;
-import org.testcontainers.mysql.MySQLContainer;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * 테스트용 MySQL·Kafka, user-service 대신 토큰을 서명할 키, 시간을 움직일 수 있는 시계.
+ * 테스트용 PostgreSQL·Kafka, user-service 대신 토큰을 서명할 키, 시간을 움직일 수 있는 시계.
  */
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfiguration {
@@ -30,8 +30,8 @@ public class TestcontainersConfiguration {
 
     @Bean
     @ServiceConnection
-    MySQLContainer mysqlContainer() {
-        return new MySQLContainer("mysql:8.4");
+    PostgreSQLContainer postgresContainer() {
+        return new PostgreSQLContainer("postgres:17.6-alpine");
     }
 
     @Bean

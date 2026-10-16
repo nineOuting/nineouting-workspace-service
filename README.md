@@ -11,14 +11,14 @@
 필요한 것: JDK 21, Docker, 실행 중인 user-service(8081)
 
 1. `~/.gradle/gradle.properties`에 `gpr.user`, `gpr.key`(read:packages 토큰) — 공통 모듈을 받기 위해
-2. `docker compose up -d` — MySQL(`localhost:3308`), Kafka(`localhost:9092`)
+2. `docker compose up -d` — PostgreSQL(`localhost:5434`), Kafka(`localhost:9092`)
 3. `./gradlew bootRun --args='--spring.profiles.active=local'`
 4. 확인: `http://localhost:8082/actuator/health`
 
 ## 테스트
 
 ```bash
-./gradlew test   # Testcontainers로 MySQL·Kafka를 띄운다. user-service는 가짜로 바꿔 쓴다
+./gradlew test   # Testcontainers로 PostgreSQL·Kafka를 띄운다. user-service는 가짜로 바꿔 쓴다
 ```
 
 ## 환경 변수
@@ -26,7 +26,7 @@
 | 이름 | 기본값 | 설명 |
 |------|--------|------|
 | `SERVER_PORT` | `8082` | |
-| `DB_URL` | `jdbc:mysql://localhost:3308/workspace_db` | |
+| `DB_URL` | `jdbc:postgresql://localhost:5434/workspace_db` | |
 | `DB_USERNAME` / `DB_PASSWORD` | `workspace_service` | |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | 참여 요청·승인, 폴더 삭제 이벤트 |
 | `JWT_JWKS_URI` | `http://localhost:8081/.well-known/jwks.json` | access 토큰 검증 공개키 |
