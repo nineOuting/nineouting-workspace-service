@@ -42,7 +42,7 @@ public class WorkspaceController {
                 .body(ApiResponse.ok(workspaceService.create(user.userId(), request.name())));
     }
 
-    /** REQ-029·030 */
+    /** REQ-029~030 */
     @GetMapping
     public ApiResponse<List<WorkspaceResponse>> findMine(@CurrentUser AuthenticatedUser user) {
         return ApiResponse.ok(workspaceService.findMine(user.userId()));
@@ -61,14 +61,14 @@ public class WorkspaceController {
         return ApiResponse.ok();
     }
 
-    /** REQ-033 */
+    /** REQ-034 */
     @PostMapping("/{workspaceId}/invite-link")
     public ApiResponse<InviteLinkResponse> issueInviteLink(@CurrentUser AuthenticatedUser user,
                                                            @PathVariable Long workspaceId) {
         return ApiResponse.ok(membershipService.issueInviteLink(workspaceId, user.userId()));
     }
 
-    /** REQ-034 */
+    /** REQ-035 */
     @GetMapping("/{workspaceId}/join-requests")
     public ApiResponse<List<JoinRequestResponse>> joinRequests(@CurrentUser AuthenticatedUser user,
                                                                @PathVariable Long workspaceId) {
@@ -89,20 +89,20 @@ public class WorkspaceController {
         return ApiResponse.ok();
     }
 
-    /** REQ-032 */
+    /** REQ-033 */
     @GetMapping("/{workspaceId}/members")
     public ApiResponse<List<MemberResponse>> members(@CurrentUser AuthenticatedUser user, @PathVariable Long workspaceId) {
         return ApiResponse.ok(membershipService.members(workspaceId, user.userId()));
     }
 
-    /** REQ-118. 경로가 더 구체적이라 아래 {userId}보다 먼저 맞는다. */
+    /** REQ-032. 경로가 더 구체적이라 아래 {userId}보다 먼저 맞는다. */
     @DeleteMapping("/{workspaceId}/members/me")
     public ApiResponse<Void> leave(@CurrentUser AuthenticatedUser user, @PathVariable Long workspaceId) {
         membershipService.leave(workspaceId, user.userId());
         return ApiResponse.ok();
     }
 
-    /** REQ-035 내보내기 */
+    /** REQ-036 내보내기 */
     @DeleteMapping("/{workspaceId}/members/{userId}")
     public ApiResponse<Void> removeMember(@CurrentUser AuthenticatedUser user, @PathVariable Long workspaceId,
                                           @PathVariable Long userId) {
@@ -110,7 +110,7 @@ public class WorkspaceController {
         return ApiResponse.ok();
     }
 
-    /** REQ-035 관리자 양도 */
+    /** REQ-036 관리자 양도 */
     @PutMapping("/{workspaceId}/admin")
     public ApiResponse<Void> transferAdmin(@CurrentUser AuthenticatedUser user, @PathVariable Long workspaceId,
                                            @Valid @RequestBody UserIdRequest request) {

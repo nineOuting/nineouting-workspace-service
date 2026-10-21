@@ -3,7 +3,7 @@
 워크스페이스·멤버·초대·프로젝트 폴더·폴더 권한을 맡는 서비스.
 
 - 설계(데이터·API·권한·에러 코드): [nineouting-docs/docs/services/workspace-service.md](https://github.com/nineOuting/nineouting-docs/blob/main/docs/services/workspace-service.md)
-- 요구사항: REQ-015~017, 024~025, 028~045, 115, 117~118
+- 요구사항: REQ-015~017, 024~025, 028~047, 058
 - 포트: `8082`
 
 ## 로컬 실행

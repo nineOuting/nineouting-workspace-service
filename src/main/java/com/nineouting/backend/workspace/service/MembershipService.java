@@ -41,7 +41,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 초대 링크·참여 요청 (REQ-015~017, 033, 034), 멤버 관리 (REQ-032, 035), 나가기 (REQ-118).
+ * 초대 링크·참여 요청 (REQ-015~017, 034~035), 멤버 관리 (REQ-033, 036), 나가기 (REQ-032).
  */
 @Service
 @RequiredArgsConstructor
@@ -122,7 +122,7 @@ public class MembershipService {
         }).toList();
     }
 
-    /** REQ-034. 승인하면 멤버가 되고 요청자에게 알림 이벤트를 보낸다. */
+    /** REQ-035. 승인하면 멤버가 되고 요청자에게 알림 이벤트를 보낸다. */
     @Transactional
     public void approve(Long workspaceId, Long joinRequestId, Long adminUserId) {
         JoinRequest request = decidablePendingRequest(workspaceId, joinRequestId, adminUserId);
@@ -142,7 +142,7 @@ public class MembershipService {
                 .decide(JoinRequestStatus.REJECTED, adminUserId, now());
     }
 
-    /** REQ-032. 관리자만 볼 수 있다. */
+    /** REQ-033. 관리자만 볼 수 있다. */
     @Transactional(readOnly = true)
     public List<MemberResponse> members(Long workspaceId, Long adminUserId) {
         folderAccess.requireAdmin(workspaceId, adminUserId);
@@ -156,7 +156,7 @@ public class MembershipService {
         }).toList();
     }
 
-    /** REQ-035 내보내기. 내보낸 사람이 가진 폴더는 자동으로 양도한다. */
+    /** REQ-036 내보내기. 내보낸 사람이 가진 폴더는 자동으로 양도한다. */
     @Transactional
     public void removeMember(Long workspaceId, Long adminUserId, Long targetUserId) {
         folderAccess.requireAdmin(workspaceId, adminUserId);
@@ -169,7 +169,7 @@ public class MembershipService {
         leaveWorkspace(target);
     }
 
-    /** REQ-035 관리자 양도. 관리자는 워크스페이스마다 1명이므로 넘기는 사람은 일반 멤버가 된다. */
+    /** REQ-036 관리자 양도. 관리자는 워크스페이스마다 1명이므로 넘기는 사람은 일반 멤버가 된다. */
     @Transactional
     public void transferAdmin(Long workspaceId, Long adminUserId, Long targetUserId) {
         WorkspaceMember admin = folderAccess.requireAdmin(workspaceId, adminUserId);
@@ -182,7 +182,7 @@ public class MembershipService {
         target.changeRole(WorkspaceRole.ADMIN);
     }
 
-    /** REQ-118. 관리자는 양도한 뒤에, 폴더 소유자는 폴더를 양도한 뒤에 나갈 수 있다. */
+    /** REQ-032. 관리자는 양도한 뒤에, 폴더 소유자는 폴더를 양도한 뒤에 나갈 수 있다. */
     @Transactional
     public void leave(Long workspaceId, Long userId) {
         WorkspaceMember member = folderAccess.requireMember(workspaceId, userId);
