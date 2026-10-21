@@ -25,7 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 워크스페이스 생성·목록·전환 (REQ-028~031, REQ-042).
+ * 워크스페이스 생성·목록·전환 (REQ-028~031, 044).
  */
 @Service
 @RequiredArgsConstructor

@@ -37,7 +37,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 프로젝트 폴더·하위 폴더 (REQ-036~045, 115, 117), 최근 프로젝트 (REQ-024).
+ * 프로젝트 폴더·하위 폴더 (REQ-037~047, 058), 최근 프로젝트 (REQ-024).
  */
 @Service
 @RequiredArgsConstructor
@@ -60,7 +60,7 @@ public class FolderService {
     private final OutboxEventWriter outboxEventWriter;
     private final Clock clock;
 
-    /** REQ-036. 들어갈 수 있는 폴더만, 기본 폴더가 맨 위. 하위 폴더에만 초대됐으면 상위 폴더는 이름만 보인다. */
+    /** REQ-037. 들어갈 수 있는 폴더만, 기본 폴더가 맨 위. 하위 폴더에만 초대됐으면 상위 폴더는 이름만 보인다. */
     @Transactional(readOnly = true)
     public List<FolderNode> list(Long workspaceId, Long userId) {
         folderAccess.requireMember(workspaceId, userId);
@@ -81,7 +81,7 @@ public class FolderService {
         return nodes;
     }
 
-    /** REQ-038·039·044·045. 2단계까지, 이름 중복 불가 (프로젝트 폴더는 워크스페이스 안, 하위 폴더는 같은 상위 안). */
+    /** REQ-039~040, 046~047. 2단계까지, 이름 중복 불가 (프로젝트 폴더는 워크스페이스 안, 하위 폴더는 같은 상위 안). */
     @Transactional
     public FolderNode create(Long workspaceId, Long userId, String name, Long parentId) {
         folderAccess.requireMember(workspaceId, userId);
@@ -98,7 +98,7 @@ public class FolderService {
         return node(folder, true, List.of());
     }
 
-    /** REQ-037. 열 때마다 최근 방문으로 기록한다 (REQ-024). */
+    /** REQ-038. 열 때마다 최근 방문으로 기록한다 (REQ-024). */
     @Transactional
     public FolderDetailResponse open(Long folderId, Long userId) {
         Folder folder = folderAccess.requireAccess(folderId, userId);
@@ -116,7 +116,7 @@ public class FolderService {
                 folder.isDefaultFolder(), folder.getOwnerUserId(), folder.isOwnedBy(userId), path);
     }
 
-    /** 소유자만. 기본 폴더는 소유자가 없어 관리자가 바꾼다 (REQ-042). */
+    /** 소유자만. 기본 폴더는 소유자가 없어 관리자가 바꾼다 (REQ-044). */
     @Transactional
     public FolderNode rename(Long folderId, Long userId, String name) {
         Folder folder = folderAccess.requireFolder(folderId);
@@ -130,7 +130,7 @@ public class FolderService {
         return node(folder, true, List.of());
     }
 
-    /** REQ-115. 소유자만, 하위 폴더까지 함께 지우고 안의 회의·회의록을 지우도록 이벤트를 보낸다. */
+    /** REQ-058. 소유자만, 하위 폴더까지 함께 지우고 안의 회의·회의록을 지우도록 이벤트를 보낸다. */
     @Transactional
     public void delete(Long folderId, Long userId) {
         Folder folder = folderAccess.requireFolder(folderId);
@@ -149,7 +149,7 @@ public class FolderService {
                 new FolderDeleted(folder.getWorkspaceId(), folderIds));
     }
 
-    /** REQ-040. 들어갈 수 있는 사람 전체. 상위 폴더 멤버라서 들어오는 사람은 inherited. */
+    /** REQ-041. 들어갈 수 있는 사람 전체. 상위 폴더 멤버라서 들어오는 사람은 inherited. */
     @Transactional(readOnly = true)
     public List<FolderMemberResponse> members(Long folderId, Long userId) {
         Folder folder = folderAccess.requireAccess(folderId, userId);
@@ -173,7 +173,7 @@ public class FolderService {
         }).toList();
     }
 
-    /** REQ-040. 소유자만, 같은 워크스페이스 멤버만 초대할 수 있다. */
+    /** REQ-041. 소유자만, 같은 워크스페이스 멤버만 초대할 수 있다. */
     @Transactional
     public void invite(Long folderId, Long ownerUserId, Long targetUserId) {
         Folder folder = folderAccess.requireOwner(folderId, ownerUserId);
@@ -186,7 +186,7 @@ public class FolderService {
         folderMemberRepository.save(new FolderMember(folderId, targetUserId, now()));
     }
 
-    /** REQ-041. 소유자만. 상위 폴더 멤버라서 들어오는 사람은 여기서 내보낼 수 없다. */
+    /** REQ-042. 소유자만. 상위 폴더 멤버라서 들어오는 사람은 여기서 내보낼 수 없다. */
     @Transactional
     public void removeMember(Long folderId, Long ownerUserId, Long targetUserId) {
         folderAccess.requireOwner(folderId, ownerUserId);
@@ -195,7 +195,7 @@ public class FolderService {
         folderMemberRepository.delete(member);
     }
 
-    /** REQ-117. 초대된 폴더 멤버에게만 넘길 수 있고, 넘긴 사람은 일반 폴더 멤버로 남는다. */
+    /** REQ-043. 초대된 폴더 멤버에게만 넘길 수 있고, 넘긴 사람은 일반 폴더 멤버로 남는다. */
     @Transactional
     public void transferOwner(Long folderId, Long ownerUserId, Long targetUserId) {
         Folder folder = folderAccess.requireOwner(folderId, ownerUserId);

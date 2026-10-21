@@ -34,7 +34,7 @@ public class InternalFolderService {
         return new FolderAccessResponse(folderId, folder.getWorkspaceId(), folderAccess.canAccess(folder, userId));
     }
 
-    /** 회의 참석자 선택 (REQ-058): 폴더에 들어갈 수 있는 사람 전체 */
+    /** 회의 참석자 선택 (REQ-061): 폴더에 들어갈 수 있는 사람 전체 */
     @Transactional(readOnly = true)
     public Set<Long> accessorIds(Long folderId) {
         Folder folder = folderAccess.requireFolder(folderId);
