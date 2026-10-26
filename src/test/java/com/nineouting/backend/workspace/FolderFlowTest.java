@@ -62,6 +62,28 @@ class FolderFlowTest extends ApiTestSupport {
     }
 
     @Test
+    void 폴더_접근_권한을_모든_폴더로_바꾸면_초대받지_않은_폴더에도_들어간다() throws Exception {
+        Long project = createFolder(workspaceId, owner, "기획", null);
+        String path = "/api/workspaces/" + workspaceId + "/members/" + member + "/folder-access";
+
+        call(workspaceOwner, getRequest("/api/workspaces/" + workspaceId + "/members"), null)
+                .andExpect(jsonPath("$.data[?(@.userId == " + member + ")].folderAccess").value("INVITED"));
+        call(member, getRequest("/api/folders/" + project), null).andExpect(status().isForbidden());
+        call(owner, putRequest(path), "{\"folderAccess\":\"ALL\"}").andExpect(status().isForbidden());
+
+        call(workspaceOwner, putRequest(path), "{\"folderAccess\":\"ALL\"}").andExpect(status().isOk());
+        call(member, getRequest("/api/folders/" + project), null).andExpect(status().isOk());
+        call(owner, getRequest("/api/folders/" + project + "/members"), null)
+                .andExpect(jsonPath("$.data[?(@.userId == " + member + ")].inherited").value(true));
+        mockMvc.perform(getRequest("/internal/folders/" + project + "/access").param("userId", member.toString()))
+                .andExpect(jsonPath("$.data.allowed").value(true));
+
+        call(workspaceOwner, putRequest(path), "{\"folderAccess\":\"INVITED\"}").andExpect(status().isOk());
+        call(member, getRequest("/api/folders/" + project), null).andExpect(status().isForbidden());
+        call(workspaceOwner, putRequest(path), "{\"folderAccess\":\"NONE\"}").andExpect(status().isBadRequest());
+    }
+
+    @Test
     void 기본_폴더는_멤버_누구나_들어가고_이름은_소유자가_바꾼다() throws Exception {
         Long defaultFolder = defaultFolder(workspaceId, member);
 

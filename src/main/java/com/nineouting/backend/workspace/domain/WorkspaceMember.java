@@ -36,11 +36,17 @@ public class WorkspaceMember {
     @Column(name = "joined_at", nullable = false)
     private LocalDateTime joinedAt;
 
+    /** REQ-128 */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "folder_access", nullable = false, length = 20)
+    private FolderAccessScope folderAccess;
+
     public WorkspaceMember(Long workspaceId, Long userId, WorkspaceRole role, LocalDateTime joinedAt) {
         this.workspaceId = workspaceId;
         this.userId = userId;
         this.role = role;
         this.joinedAt = joinedAt;
+        this.folderAccess = FolderAccessScope.INVITED;
     }
 
     public boolean isOwner() {
@@ -49,5 +55,13 @@ public class WorkspaceMember {
 
     public void changeRole(WorkspaceRole role) {
         this.role = role;
+    }
+
+    public void changeFolderAccess(FolderAccessScope folderAccess) {
+        this.folderAccess = folderAccess;
+    }
+
+    public boolean canAccessAllFolders() {
+        return folderAccess == FolderAccessScope.ALL;
     }
 }

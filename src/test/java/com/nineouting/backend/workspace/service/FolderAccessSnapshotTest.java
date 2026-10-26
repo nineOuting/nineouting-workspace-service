@@ -100,6 +100,6 @@ class FolderAccessSnapshotTest {
         Map<Long, List<FolderMember>> invitedByFolder = invited.stream()
                 .collect(Collectors.groupingBy(FolderMember::getFolderId));
         Set<Long> members = new LinkedHashSet<>(Arrays.asList(workspaceMembers));
-        return new Snapshot(folders, byId, invitedByFolder, members);
+        return new Snapshot(folders, byId, invitedByFolder, members, Set.of());
     }
 }

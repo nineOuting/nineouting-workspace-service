@@ -85,14 +85,20 @@ public class FolderAccess {
         Map<Long, Folder> byId = folders.stream().collect(Collectors.toMap(Folder::getId, Function.identity()));
         Map<Long, List<FolderMember>> invited = folderMemberRepository.findByFolderIdIn(byId.keySet()).stream()
                 .collect(Collectors.groupingBy(FolderMember::getFolderId));
-        Set<Long> workspaceMembers = workspaceMemberRepository.findByWorkspaceIdOrderByJoinedAtAsc(workspaceId).stream()
+        List<WorkspaceMember> members = workspaceMemberRepository.findByWorkspaceIdOrderByJoinedAtAsc(workspaceId);
+        Set<Long> workspaceMembers = members.stream()
                 .map(WorkspaceMember::getUserId)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
-        return new Snapshot(folders, byId, invited, workspaceMembers);
+        Set<Long> allFolderMembers = members.stream()
+                .filter(WorkspaceMember::canAccessAllFolders)
+                .map(WorkspaceMember::getUserId)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        return new Snapshot(folders, byId, invited, workspaceMembers, allFolderMembers);
     }
 
+    /** @param allFolderMembers 폴더 접근 권한이 "모든 폴더"인 멤버 (REQ-128) */
     public record Snapshot(List<Folder> folders, Map<Long, Folder> byId, Map<Long, List<FolderMember>> invited,
-                           Set<Long> workspaceMembers) {
+                           Set<Long> workspaceMembers, Set<Long> allFolderMembers) {
 
         public boolean canAccess(Folder folder, Long userId) {
             return accessors(folder).contains(userId);
@@ -108,6 +114,7 @@ public class FolderAccess {
                 result.add(folder.getOwnerUserId());
             }
             invited.getOrDefault(folder.getId(), List.of()).forEach(member -> result.add(member.getUserId()));
+            result.addAll(allFolderMembers);
             if (folder.getParentId() != null && byId.containsKey(folder.getParentId())) {
                 result.addAll(accessors(byId.get(folder.getParentId())));
             }

@@ -9,6 +9,7 @@ import com.nineouting.backend.common.web.error.BusinessException;
 import com.nineouting.backend.common.web.error.CommonErrorCode;
 import com.nineouting.backend.workspace.config.WorkspaceProperties;
 import com.nineouting.backend.workspace.domain.Folder;
+import com.nineouting.backend.workspace.domain.FolderAccessScope;
 import com.nineouting.backend.workspace.domain.FolderMember;
 import com.nineouting.backend.workspace.domain.InviteLink;
 import com.nineouting.backend.workspace.domain.JoinRequest;
@@ -152,8 +153,15 @@ public class MembershipService {
             UserSummary user = users.get(member.getUserId());
             return new MemberResponse(member.getUserId(), user == null ? null : user.name(),
                     user == null ? null : user.email(), user == null ? null : user.profileImageUrl(),
-                    member.getRole(), member.getJoinedAt());
+                    member.getRole(), member.getFolderAccess(), member.getJoinedAt());
         }).toList();
+    }
+
+    /** REQ-128. 소유자만 바꾼다 */
+    @Transactional
+    public void changeFolderAccess(Long workspaceId, Long ownerUserId, Long targetUserId, FolderAccessScope scope) {
+        folderAccess.requireWorkspaceOwner(workspaceId, ownerUserId);
+        folderAccess.requireMember(workspaceId, targetUserId).changeFolderAccess(scope);
     }
 
     /** REQ-036 내보내기. 내보낸 사람이 가진 폴더는 자동으로 양도한다. */

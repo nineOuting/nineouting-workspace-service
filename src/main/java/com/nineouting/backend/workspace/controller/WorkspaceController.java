@@ -4,6 +4,7 @@ import com.nineouting.backend.common.security.jwt.AuthenticatedUser;
 import com.nineouting.backend.common.security.web.CurrentUser;
 import com.nineouting.backend.common.web.response.ApiResponse;
 import com.nineouting.backend.workspace.dto.CreateWorkspaceRequest;
+import com.nineouting.backend.workspace.dto.FolderAccessRequest;
 import com.nineouting.backend.workspace.dto.InviteLinkResponse;
 import com.nineouting.backend.workspace.dto.JoinRequestResponse;
 import com.nineouting.backend.workspace.dto.MemberResponse;
@@ -99,6 +100,14 @@ public class WorkspaceController {
     @DeleteMapping("/{workspaceId}/members/me")
     public ApiResponse<Void> leave(@CurrentUser AuthenticatedUser user, @PathVariable Long workspaceId) {
         membershipService.leave(workspaceId, user.userId());
+        return ApiResponse.ok();
+    }
+
+    /** REQ-128. 소유자만. 멤버의 폴더 접근 권한을 ALL(모든 폴더) / INVITED(초대된 폴더만)로 바꾼다 */
+    @PutMapping("/{workspaceId}/members/{userId}/folder-access")
+    public ApiResponse<Void> changeFolderAccess(@CurrentUser AuthenticatedUser user, @PathVariable Long workspaceId,
+                                                @PathVariable Long userId, @Valid @RequestBody FolderAccessRequest request) {
+        membershipService.changeFolderAccess(workspaceId, user.userId(), userId, request.folderAccess());
         return ApiResponse.ok();
     }
 
