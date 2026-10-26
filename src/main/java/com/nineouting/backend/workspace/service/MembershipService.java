@@ -143,10 +143,10 @@ public class MembershipService {
                 .decide(JoinRequestStatus.REJECTED, ownerUserId, now());
     }
 
-    /** REQ-033. 소유자만 볼 수 있다. */
+    /** REQ-033. 멤버 누구나 본다 (관리는 소유자만, 2026-10-26 결정). */
     @Transactional(readOnly = true)
-    public List<MemberResponse> members(Long workspaceId, Long ownerUserId) {
-        folderAccess.requireWorkspaceOwner(workspaceId, ownerUserId);
+    public List<MemberResponse> members(Long workspaceId, Long userId) {
+        folderAccess.requireMember(workspaceId, userId);
         List<WorkspaceMember> members = workspaceMemberRepository.findByWorkspaceIdOrderByJoinedAtAsc(workspaceId);
         Map<Long, UserSummary> users = userClient.findUsers(members.stream().map(WorkspaceMember::getUserId).toList());
         return members.stream().map(member -> {
