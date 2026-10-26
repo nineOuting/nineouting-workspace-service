@@ -27,16 +27,11 @@ class FolderFlowTest extends ApiTestSupport {
     }
 
     @Test
-    void 폴더_이름은_프로젝트_폴더끼리_하위_폴더는_같은_상위_안에서만_겹칠_수_없다() throws Exception {
-        Long a = createFolder(workspaceId, owner, "기획", null);
-        Long b = createFolder(workspaceId, owner, "개발", null);
+    void 폴더_이름은_워크스페이스_안에서_겹칠_수_없다() throws Exception {
+        createFolder(workspaceId, owner, "기획", null);
 
-        call(owner, post("/api/workspaces/" + workspaceId + "/folders"), "{\"name\":\"기획\"}")
+        call(member, post("/api/workspaces/" + workspaceId + "/folders"), "{\"name\":\"기획\"}")
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("FOLDER_NAME_DUPLICATED"));
-        createFolder(workspaceId, owner, "회의", a);
-        createFolder(workspaceId, owner, "회의", b);
-        call(owner, post("/api/workspaces/" + workspaceId + "/folders"), "{\"name\":\"회의\",\"parentId\":%d}".formatted(a))
                 .andExpect(jsonPath("$.code").value("FOLDER_NAME_DUPLICATED"));
         // 대소문자만 다른 이름도 같은 이름으로 본다
         createFolder(workspaceId, owner, "Design", null);
@@ -45,11 +40,10 @@ class FolderFlowTest extends ApiTestSupport {
     }
 
     @Test
-    void 폴더는_2단계까지만_만들_수_있다() throws Exception {
-        Long project = createFolder(workspaceId, owner, "기획", null);
-        Long sub = createFolder(workspaceId, owner, "1차", project);
+    void 워크스페이스_멤버_누구나_폴더를_만들고_폴더_안에는_폴더를_만들_수_없다() throws Exception {
+        Long project = createFolder(workspaceId, member, "기획", null);
 
-        call(owner, post("/api/workspaces/" + workspaceId + "/folders"), "{\"name\":\"더 아래\",\"parentId\":%d}".formatted(sub))
+        call(member, post("/api/workspaces/" + workspaceId + "/folders"), "{\"name\":\"1차\",\"parentId\":%d}".formatted(project))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("FOLDER_DEPTH_EXCEEDED"));
     }
@@ -79,29 +73,6 @@ class FolderFlowTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.code").value("DEFAULT_FOLDER_UNDELETABLE"));
     }
 
-    @Test
-    void 상위_폴더_멤버는_하위_폴더에_자동으로_들어가고_하위에만_초대된_사람은_상위에_못_들어간다() throws Exception {
-        Long project = createFolder(workspaceId, owner, "기획", null);
-        Long sub = createFolder(workspaceId, owner, "1차", project);
-        Long outsider = newUser();
-        join(workspaceId, workspaceOwner, outsider);
-        inviteToFolder(project, owner, member);
-        inviteToFolder(sub, owner, outsider);
-
-        call(member, getRequest("/api/folders/" + sub), null).andExpect(status().isOk());
-        call(outsider, getRequest("/api/folders/" + sub), null)
-                .andExpect(jsonPath("$.data.path[0].accessible").value(false));
-        call(outsider, getRequest("/api/folders/" + project), null).andExpect(status().isForbidden());
-        // 목록에는 상위 폴더 이름만 보이고 들어갈 수는 없다
-        call(outsider, getRequest("/api/workspaces/" + workspaceId + "/folders"), null)
-                .andExpect(jsonPath("$.data[1].folderId").value(project))
-                .andExpect(jsonPath("$.data[1].accessible").value(false))
-                .andExpect(jsonPath("$.data[1].children[0].folderId").value(sub));
-
-        call(owner, getRequest("/api/folders/" + sub + "/members"), null)
-                .andExpect(jsonPath("$.data[?(@.userId == " + member + ")].inherited").value(true))
-                .andExpect(jsonPath("$.data[?(@.userId == " + outsider + ")].inherited").value(false));
-    }
 
     @Test
     void 초대와_내보내기는_소유자만_같은_워크스페이스_멤버에게만_할_수_있다() throws Exception {
@@ -134,17 +105,15 @@ class FolderFlowTest extends ApiTestSupport {
     }
 
     @Test
-    void 폴더를_지우면_하위_폴더까지_지워지고_삭제_이벤트가_남는다() throws Exception {
+    void 폴더를_지우면_삭제_이벤트가_남는다() throws Exception {
         Long project = createFolder(workspaceId, owner, "기획", null);
-        Long sub = createFolder(workspaceId, owner, "1차", project);
         inviteToFolder(project, owner, member);
 
         call(member, deleteRequest("/api/folders/" + project), null).andExpect(status().isForbidden());
         call(owner, deleteRequest("/api/folders/" + project), null).andExpect(status().isOk());
 
         call(owner, getRequest("/api/folders/" + project), null).andExpect(status().isNotFound());
-        call(owner, getRequest("/api/folders/" + sub), null).andExpect(status().isNotFound());
-        assertThat(outboxContains("FolderDeleted", "\"folderIds\":[" + sub + "," + project + "]")).isTrue();
+        assertThat(outboxContains("FolderDeleted", "\"folderIds\":[" + project + "]")).isTrue();
     }
 
     @Test

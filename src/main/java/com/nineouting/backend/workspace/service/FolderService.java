@@ -81,20 +81,17 @@ public class FolderService {
         return nodes;
     }
 
-    /** REQ-039~040, 046~047. 2단계까지, 이름 중복 불가 (프로젝트 폴더는 워크스페이스 안, 하위 폴더는 같은 상위 안). */
+    /**
+     * REQ-039~040, 046~047. 워크스페이스 멤버 누구나, 이름은 워크스페이스 안에서 겹칠 수 없다.
+     * 폴더 안에 폴더는 만들 수 없다 (2026-10-26 기획서 REQ-040). 예전 하위 폴더 구조(parentId)는 읽기만 남겨 둔다.
+     */
     @Transactional
     public FolderNode create(Long workspaceId, Long userId, String name, Long parentId) {
         folderAccess.requireMember(workspaceId, userId);
         if (parentId != null) {
-            Folder parent = folderAccess.requireAccess(parentId, userId);
-            if (!parent.getWorkspaceId().equals(workspaceId)) {
-                throw new BusinessException(CommonErrorCode.NOT_FOUND);
-            }
-            if (!parent.isTopLevel()) {
-                throw new BusinessException(WorkspaceErrorCode.FOLDER_DEPTH_EXCEEDED);
-            }
+            throw new BusinessException(WorkspaceErrorCode.FOLDER_DEPTH_EXCEEDED);
         }
-        Folder folder = saveWithUniqueName(Folder.create(workspaceId, parentId, name, userId));
+        Folder folder = saveWithUniqueName(Folder.create(workspaceId, null, name, userId));
         return node(folder, true, List.of());
     }
 

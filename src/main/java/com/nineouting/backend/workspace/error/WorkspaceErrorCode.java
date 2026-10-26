@@ -19,7 +19,7 @@ public enum WorkspaceErrorCode implements ErrorCode {
     JOIN_REQUEST_PENDING(HttpStatus.CONFLICT, "이미 참여를 요청했습니다. 승인을 기다려 주세요"),
     JOIN_REQUEST_ALREADY_DECIDED(HttpStatus.CONFLICT, "이미 처리된 참여 요청입니다"),
     FOLDER_NAME_DUPLICATED(HttpStatus.CONFLICT, "같은 이름의 폴더가 있습니다"),
-    FOLDER_DEPTH_EXCEEDED(HttpStatus.BAD_REQUEST, "폴더는 2단계까지만 만들 수 있습니다"),
+    FOLDER_DEPTH_EXCEEDED(HttpStatus.BAD_REQUEST, "폴더 안에는 폴더를 만들 수 없습니다"),
     DEFAULT_FOLDER_UNDELETABLE(HttpStatus.BAD_REQUEST, "기본 폴더는 삭제할 수 없습니다"),
     OWNER_CANNOT_LEAVE(HttpStatus.BAD_REQUEST, "소유권을 양도해야 워크스페이스에서 나갈 수 있습니다. 다른 멤버에게 소유권을 양도한 후 다시 시도해 주세요"),
     FOLDER_OWNERSHIP_REMAINING(HttpStatus.BAD_REQUEST, "소유한 폴더를 다른 멤버에게 양도한 뒤에 나갈 수 있습니다"),
