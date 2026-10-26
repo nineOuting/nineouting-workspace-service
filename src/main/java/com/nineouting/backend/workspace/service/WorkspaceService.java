@@ -38,14 +38,14 @@ public class WorkspaceService {
     private final FolderAccess folderAccess;
     private final Clock clock;
 
-    /** 만든 사람이 관리자가 되고, 기본 폴더가 자동으로 생긴다. */
+    /** 만든 사람이 소유자가 되고, 기본 폴더가 자동으로 생긴다. */
     @Transactional
     public WorkspaceResponse create(Long userId, String name) {
         Workspace workspace = workspaceRepository.save(new Workspace(name));
-        workspaceMemberRepository.save(new WorkspaceMember(workspace.getId(), userId, WorkspaceRole.ADMIN, now()));
+        workspaceMemberRepository.save(new WorkspaceMember(workspace.getId(), userId, WorkspaceRole.OWNER, now()));
         folderRepository.save(Folder.createDefault(workspace.getId()));
         rememberLastVisited(userId, workspace.getId());
-        return new WorkspaceResponse(workspace.getId(), workspace.getName(), WorkspaceRole.ADMIN, true);
+        return new WorkspaceResponse(workspace.getId(), workspace.getName(), WorkspaceRole.OWNER, true);
     }
 
     @Transactional(readOnly = true)

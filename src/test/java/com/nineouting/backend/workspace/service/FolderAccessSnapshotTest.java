@@ -19,7 +19,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 /**
  * 폴더 접근 규칙 (docs/requirements.md "권한"). DB 없이 Snapshot의 판단만 확인한다.
  * <pre>
- * 워크스페이스 7 (멤버: 관리자 1, 소유자 2, 초대 3, 하위만 초대 4, 아무 데도 없음 5)
+ * 워크스페이스 7 (멤버: 소유자 1, 소유자 2, 초대 3, 하위만 초대 4, 아무 데도 없음 5)
  * ├─ 기본 폴더 10
  * └─ 프로젝트 폴더 20 (소유자 2, 초대 3)
  *     └─ 하위 폴더 21 (소유자 2, 초대 4)
@@ -28,7 +28,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 class FolderAccessSnapshotTest {
 
     private static final long WORKSPACE = 7L;
-    private static final long ADMIN = 1L;
+    private static final long WORKSPACE_OWNER = 1L;
     private static final long OWNER = 2L;
     private static final long PROJECT_MEMBER = 3L;
     private static final long SUB_ONLY_MEMBER = 4L;
@@ -44,12 +44,12 @@ class FolderAccessSnapshotTest {
             List.of(defaultFolder, project, sub),
             List.of(new FolderMember(20L, PROJECT_MEMBER, NOW), new FolderMember(21L, SUB_ONLY_MEMBER, NOW),
                     new FolderMember(20L, LEFT_USER, NOW)),
-            ADMIN, OWNER, PROJECT_MEMBER, SUB_ONLY_MEMBER, OTHER_MEMBER);
+            WORKSPACE_OWNER, OWNER, PROJECT_MEMBER, SUB_ONLY_MEMBER, OTHER_MEMBER);
 
     @Test
     void 기본_폴더는_워크스페이스_멤버_누구나_들어간다() {
         assertThat(snapshot.accessors(defaultFolder))
-                .containsExactlyInAnyOrder(ADMIN, OWNER, PROJECT_MEMBER, SUB_ONLY_MEMBER, OTHER_MEMBER);
+                .containsExactlyInAnyOrder(WORKSPACE_OWNER, OWNER, PROJECT_MEMBER, SUB_ONLY_MEMBER, OTHER_MEMBER);
     }
 
     @Test
@@ -58,9 +58,9 @@ class FolderAccessSnapshotTest {
     }
 
     @Test
-    void 관리자도_초대받지_않으면_들어갈_수_없다() {
-        assertThat(snapshot.canAccess(project, ADMIN)).isFalse();
-        assertThat(snapshot.canAccess(sub, ADMIN)).isFalse();
+    void 소유자도_초대받지_않으면_들어갈_수_없다() {
+        assertThat(snapshot.canAccess(project, WORKSPACE_OWNER)).isFalse();
+        assertThat(snapshot.canAccess(sub, WORKSPACE_OWNER)).isFalse();
     }
 
     @Test

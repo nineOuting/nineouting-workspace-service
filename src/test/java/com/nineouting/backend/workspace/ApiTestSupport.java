@@ -76,17 +76,17 @@ public abstract class ApiTestSupport {
         return NEXT_USER_ID.incrementAndGet();
     }
 
-    protected Long createWorkspace(Long adminId) throws Exception {
-        return id(call(adminId, post("/api/workspaces"), "{\"name\":\"팀 워크스페이스\"}")
+    protected Long createWorkspace(Long ownerId) throws Exception {
+        return id(call(ownerId, post("/api/workspaces"), "{\"name\":\"팀 워크스페이스\"}")
                 .andExpect(status().isCreated()), "$.data.workspaceId");
     }
 
-    /** 초대 링크 → 참여 요청 → 관리자 승인 */
-    protected void join(Long workspaceId, Long adminId, Long userId) throws Exception {
-        String token = data(call(adminId, post("/api/workspaces/" + workspaceId + "/invite-link"), null), "$.data.token");
+    /** 초대 링크 → 참여 요청 → 소유자 승인 */
+    protected void join(Long workspaceId, Long ownerId, Long userId) throws Exception {
+        String token = data(call(ownerId, post("/api/workspaces/" + workspaceId + "/invite-link"), null), "$.data.token");
         Long requestId = id(call(userId, post("/api/invites/" + token + "/join-requests"), null)
                 .andExpect(status().isCreated()), "$.data.joinRequestId");
-        call(adminId, post("/api/workspaces/" + workspaceId + "/join-requests/" + requestId + "/approve"), null)
+        call(ownerId, post("/api/workspaces/" + workspaceId + "/join-requests/" + requestId + "/approve"), null)
                 .andExpect(status().isOk());
     }
 

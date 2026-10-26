@@ -43,8 +43,8 @@ public class WorkspaceMember {
         this.joinedAt = joinedAt;
     }
 
-    public boolean isAdmin() {
-        return role == WorkspaceRole.ADMIN;
+    public boolean isOwner() {
+        return role == WorkspaceRole.OWNER;
     }
 
     public void changeRole(WorkspaceRole role) {

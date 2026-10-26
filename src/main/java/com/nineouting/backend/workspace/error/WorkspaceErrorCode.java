@@ -21,7 +21,7 @@ public enum WorkspaceErrorCode implements ErrorCode {
     FOLDER_NAME_DUPLICATED(HttpStatus.CONFLICT, "같은 이름의 폴더가 있습니다"),
     FOLDER_DEPTH_EXCEEDED(HttpStatus.BAD_REQUEST, "폴더는 2단계까지만 만들 수 있습니다"),
     DEFAULT_FOLDER_UNDELETABLE(HttpStatus.BAD_REQUEST, "기본 폴더는 삭제할 수 없습니다"),
-    ADMIN_CANNOT_LEAVE(HttpStatus.BAD_REQUEST, "관리자 권한을 양도한 뒤에 나갈 수 있습니다"),
+    OWNER_CANNOT_LEAVE(HttpStatus.BAD_REQUEST, "소유권을 양도해야 워크스페이스에서 나갈 수 있습니다. 다른 멤버에게 소유권을 양도한 후 다시 시도해 주세요"),
     FOLDER_OWNERSHIP_REMAINING(HttpStatus.BAD_REQUEST, "소유한 폴더를 다른 멤버에게 양도한 뒤에 나갈 수 있습니다"),
     NOT_FOLDER_MEMBER(HttpStatus.BAD_REQUEST, "폴더 멤버가 아닙니다"),
     ALREADY_FOLDER_MEMBER(HttpStatus.CONFLICT, "이미 폴더 멤버입니다");

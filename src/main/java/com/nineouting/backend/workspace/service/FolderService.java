@@ -116,12 +116,12 @@ public class FolderService {
                 folder.isDefaultFolder(), folder.getOwnerUserId(), folder.isOwnedBy(userId), path);
     }
 
-    /** 소유자만. 기본 폴더는 소유자가 없어 관리자가 바꾼다 (REQ-044). */
+    /** 소유자만. 기본 폴더는 소유자가 없어 소유자가 바꾼다 (REQ-044). */
     @Transactional
     public FolderNode rename(Long folderId, Long userId, String name) {
         Folder folder = folderAccess.requireFolder(folderId);
         if (folder.isDefaultFolder()) {
-            folderAccess.requireAdmin(folder.getWorkspaceId(), userId);
+            folderAccess.requireWorkspaceOwner(folder.getWorkspaceId(), userId);
         } else {
             folderAccess.requireOwner(folderId, userId);
         }

@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
  * <ul>
  *   <li>기본 폴더: 워크스페이스 멤버 누구나</li>
  *   <li>그 외 폴더: 만든 사람(소유자) + 초대된 멤버 + (하위 폴더면) 상위 폴더에 들어갈 수 있는 사람</li>
- *   <li>관리자라도 초대받지 않은 폴더에는 들어갈 수 없다</li>
+ *   <li>소유자라도 초대받지 않은 폴더에는 들어갈 수 없다</li>
  * </ul>
  */
 @Component
@@ -39,9 +39,9 @@ public class FolderAccess {
                 .orElseThrow(() -> new BusinessException(WorkspaceErrorCode.NOT_WORKSPACE_MEMBER));
     }
 
-    public WorkspaceMember requireAdmin(Long workspaceId, Long userId) {
+    public WorkspaceMember requireWorkspaceOwner(Long workspaceId, Long userId) {
         WorkspaceMember member = requireMember(workspaceId, userId);
-        if (!member.isAdmin()) {
+        if (!member.isOwner()) {
             throw new BusinessException(CommonErrorCode.FORBIDDEN);
         }
         return member;

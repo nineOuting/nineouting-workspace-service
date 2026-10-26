@@ -110,11 +110,11 @@ public class WorkspaceController {
         return ApiResponse.ok();
     }
 
-    /** REQ-036 관리자 양도 */
-    @PutMapping("/{workspaceId}/admin")
-    public ApiResponse<Void> transferAdmin(@CurrentUser AuthenticatedUser user, @PathVariable Long workspaceId,
-                                           @Valid @RequestBody UserIdRequest request) {
-        membershipService.transferAdmin(workspaceId, user.userId(), request.userId());
+    /** REQ-129 워크스페이스 소유권 양도. 소유자만, 다른 멤버에게. 소유자는 1명이다 */
+    @PutMapping("/{workspaceId}/owner")
+    public ApiResponse<Void> transferOwnership(@CurrentUser AuthenticatedUser user, @PathVariable Long workspaceId,
+                                               @Valid @RequestBody UserIdRequest request) {
+        membershipService.transferOwnership(workspaceId, user.userId(), request.userId());
         return ApiResponse.ok();
     }
 }

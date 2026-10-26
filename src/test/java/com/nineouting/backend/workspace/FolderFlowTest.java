@@ -11,19 +11,19 @@ import org.junit.jupiter.api.Test;
 
 class FolderFlowTest extends ApiTestSupport {
 
-    private Long admin;
+    private Long workspaceOwner;
     private Long owner;
     private Long member;
     private Long workspaceId;
 
     @BeforeEach
     void setUpWorkspace() throws Exception {
-        admin = newUser();
+        workspaceOwner = newUser();
         owner = newUser();
         member = newUser();
-        workspaceId = createWorkspace(admin);
-        join(workspaceId, admin, owner);
-        join(workspaceId, admin, member);
+        workspaceId = createWorkspace(workspaceOwner);
+        join(workspaceId, workspaceOwner, owner);
+        join(workspaceId, workspaceOwner, member);
     }
 
     @Test
@@ -55,12 +55,12 @@ class FolderFlowTest extends ApiTestSupport {
     }
 
     @Test
-    void 초대받지_않으면_관리자도_폴더에_들어갈_수_없다() throws Exception {
+    void 초대받지_않으면_소유자도_폴더에_들어갈_수_없다() throws Exception {
         Long project = createFolder(workspaceId, owner, "기획", null);
 
         call(member, getRequest("/api/folders/" + project), null).andExpect(status().isForbidden());
-        call(admin, getRequest("/api/folders/" + project), null).andExpect(status().isForbidden());
-        call(admin, getRequest("/api/workspaces/" + workspaceId + "/folders"), null)
+        call(workspaceOwner, getRequest("/api/folders/" + project), null).andExpect(status().isForbidden());
+        call(workspaceOwner, getRequest("/api/workspaces/" + workspaceId + "/folders"), null)
                 .andExpect(jsonPath("$.data.length()").value(1));
 
         inviteToFolder(project, owner, member);
@@ -68,14 +68,14 @@ class FolderFlowTest extends ApiTestSupport {
     }
 
     @Test
-    void 기본_폴더는_멤버_누구나_들어가고_이름은_관리자가_바꾼다() throws Exception {
+    void 기본_폴더는_멤버_누구나_들어가고_이름은_소유자가_바꾼다() throws Exception {
         Long defaultFolder = defaultFolder(workspaceId, member);
 
         call(member, getRequest("/api/folders/" + defaultFolder), null).andExpect(status().isOk());
         call(member, patchRequest("/api/folders/" + defaultFolder), "{\"name\":\"공용\"}").andExpect(status().isForbidden());
-        call(admin, patchRequest("/api/folders/" + defaultFolder), "{\"name\":\"공용\"}")
+        call(workspaceOwner, patchRequest("/api/folders/" + defaultFolder), "{\"name\":\"공용\"}")
                 .andExpect(jsonPath("$.data.name").value("공용"));
-        call(admin, deleteRequest("/api/folders/" + defaultFolder), null)
+        call(workspaceOwner, deleteRequest("/api/folders/" + defaultFolder), null)
                 .andExpect(jsonPath("$.code").value("DEFAULT_FOLDER_UNDELETABLE"));
     }
 
@@ -84,7 +84,7 @@ class FolderFlowTest extends ApiTestSupport {
         Long project = createFolder(workspaceId, owner, "기획", null);
         Long sub = createFolder(workspaceId, owner, "1차", project);
         Long outsider = newUser();
-        join(workspaceId, admin, outsider);
+        join(workspaceId, workspaceOwner, outsider);
         inviteToFolder(project, owner, member);
         inviteToFolder(sub, owner, outsider);
 
@@ -107,7 +107,7 @@ class FolderFlowTest extends ApiTestSupport {
     void 초대와_내보내기는_소유자만_같은_워크스페이스_멤버에게만_할_수_있다() throws Exception {
         Long project = createFolder(workspaceId, owner, "기획", null);
 
-        call(member, post("/api/folders/" + project + "/members"), "{\"userId\":%d}".formatted(admin))
+        call(member, post("/api/folders/" + project + "/members"), "{\"userId\":%d}".formatted(workspaceOwner))
                 .andExpect(status().isForbidden());
         call(owner, post("/api/folders/" + project + "/members"), "{\"userId\":%d}".formatted(newUser()))
                 .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
@@ -175,7 +175,7 @@ class FolderFlowTest extends ApiTestSupport {
 
         mockMvc.perform(getRequest("/internal/folders/" + project + "/access").param("userId", member.toString()))
                 .andExpect(jsonPath("$.data.allowed").value(true));
-        mockMvc.perform(getRequest("/internal/folders/" + project + "/access").param("userId", admin.toString()))
+        mockMvc.perform(getRequest("/internal/folders/" + project + "/access").param("userId", workspaceOwner.toString()))
                 .andExpect(jsonPath("$.data.allowed").value(false));
         mockMvc.perform(getRequest("/internal/folders/" + project + "/members"))
                 .andExpect(jsonPath("$.data", containsInAnyOrder(owner.intValue(), member.intValue())));
