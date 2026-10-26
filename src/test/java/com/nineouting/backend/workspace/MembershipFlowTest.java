@@ -165,7 +165,7 @@ class MembershipFlowTest extends ApiTestSupport {
     }
 
     @Test
-    void 멤버_목록과_초대_링크는_소유자만_다룬다() throws Exception {
+    void 멤버_목록은_멤버_누구나_보고_초대_링크는_소유자만_다룬다() throws Exception {
         Long workspaceOwner = newUser();
         Long member = newUser();
         Long workspaceId = createWorkspace(workspaceOwner);
@@ -175,7 +175,10 @@ class MembershipFlowTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.data.length()").value(2))
                 .andExpect(jsonPath("$.data[0].role").value("OWNER"))
                 .andExpect(jsonPath("$.data[1].email").value("user" + member + "@example.com"));
-        call(member, getRequest("/api/workspaces/" + workspaceId + "/members"), null).andExpect(status().isForbidden());
+        call(member, getRequest("/api/workspaces/" + workspaceId + "/members"), null)
+                .andExpect(jsonPath("$.data.length()").value(2));
+        call(newUser(), getRequest("/api/workspaces/" + workspaceId + "/members"), null)
+                .andExpect(jsonPath("$.code").value("NOT_WORKSPACE_MEMBER"));
         call(member, post("/api/workspaces/" + workspaceId + "/invite-link"), null).andExpect(status().isForbidden());
     }
 
@@ -225,8 +228,8 @@ class MembershipFlowTest extends ApiTestSupport {
         }
         Long shared = createFolder(workspaceId, owner, "공유", null);
         Long alone = createFolder(workspaceId, owner, "혼자", null);
-        inviteToFolder(shared, owner, first);
-        inviteToFolder(shared, owner, second);
+        inviteToFolder(shared, workspaceOwner, first);
+        inviteToFolder(shared, workspaceOwner, second);
 
         call(workspaceOwner, deleteRequest("/api/workspaces/" + workspaceId + "/members/" + owner), null).andExpect(status().isOk());
 

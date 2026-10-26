@@ -170,10 +170,11 @@ public class FolderService {
         }).toList();
     }
 
-    /** REQ-041. 소유자만, 같은 워크스페이스 멤버만 초대할 수 있다. */
+    /** REQ-041. 워크스페이스 소유자만 (2026-10-26 결정), 같은 워크스페이스 멤버만 초대할 수 있다. */
     @Transactional
     public void invite(Long folderId, Long ownerUserId, Long targetUserId) {
-        Folder folder = folderAccess.requireOwner(folderId, ownerUserId);
+        Folder folder = folderAccess.requireFolder(folderId);
+        folderAccess.requireWorkspaceOwner(folder.getWorkspaceId(), ownerUserId);
         if (!folderAccess.snapshot(folder.getWorkspaceId()).workspaceMembers().contains(targetUserId)) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT, "같은 워크스페이스 멤버만 초대할 수 있습니다");
         }
@@ -183,10 +184,11 @@ public class FolderService {
         folderMemberRepository.save(new FolderMember(folderId, targetUserId, now()));
     }
 
-    /** REQ-042. 소유자만. 상위 폴더 멤버라서 들어오는 사람은 여기서 내보낼 수 없다. */
+    /** REQ-042. 워크스페이스 소유자만 (2026-10-26 결정). "모든 폴더" 권한으로 들어오는 사람은 여기서 내보낼 수 없다. */
     @Transactional
     public void removeMember(Long folderId, Long ownerUserId, Long targetUserId) {
-        folderAccess.requireOwner(folderId, ownerUserId);
+        Folder folder = folderAccess.requireFolder(folderId);
+        folderAccess.requireWorkspaceOwner(folder.getWorkspaceId(), ownerUserId);
         FolderMember member = folderMemberRepository.findByFolderIdAndUserId(folderId, targetUserId)
                 .orElseThrow(() -> new BusinessException(WorkspaceErrorCode.NOT_FOLDER_MEMBER));
         folderMemberRepository.delete(member);
