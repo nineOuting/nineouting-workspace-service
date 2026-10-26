@@ -53,9 +53,9 @@ public class JoinRequest {
         return status == JoinRequestStatus.PENDING;
     }
 
-    public void decide(JoinRequestStatus result, Long adminUserId, LocalDateTime now) {
+    public void decide(JoinRequestStatus result, Long ownerUserId, LocalDateTime now) {
         this.status = result;
-        this.decidedBy = adminUserId;
+        this.decidedBy = ownerUserId;
         this.decidedAt = now;
     }
 }

@@ -4,7 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
- * @param parentId 하위 폴더를 만들 때 상위 폴더 ID. 프로젝트 폴더면 null
+ * @param parentId 보내면 FOLDER_DEPTH_EXCEEDED (폴더 안에 폴더는 만들 수 없다, REQ-040)
  */
 public record CreateFolderRequest(
         @NotBlank(message = "폴더명을 입력해 주세요")

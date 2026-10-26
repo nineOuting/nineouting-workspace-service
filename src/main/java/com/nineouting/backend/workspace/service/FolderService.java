@@ -81,20 +81,17 @@ public class FolderService {
         return nodes;
     }
 
-    /** REQ-039~040, 046~047. 2단계까지, 이름 중복 불가 (프로젝트 폴더는 워크스페이스 안, 하위 폴더는 같은 상위 안). */
+    /**
+     * REQ-039~040, 046~047. 워크스페이스 멤버 누구나, 이름은 워크스페이스 안에서 겹칠 수 없다.
+     * 폴더 안에 폴더는 만들 수 없다 (2026-10-26 기획서 REQ-040). 예전 하위 폴더 구조(parentId)는 읽기만 남겨 둔다.
+     */
     @Transactional
     public FolderNode create(Long workspaceId, Long userId, String name, Long parentId) {
         folderAccess.requireMember(workspaceId, userId);
         if (parentId != null) {
-            Folder parent = folderAccess.requireAccess(parentId, userId);
-            if (!parent.getWorkspaceId().equals(workspaceId)) {
-                throw new BusinessException(CommonErrorCode.NOT_FOUND);
-            }
-            if (!parent.isTopLevel()) {
-                throw new BusinessException(WorkspaceErrorCode.FOLDER_DEPTH_EXCEEDED);
-            }
+            throw new BusinessException(WorkspaceErrorCode.FOLDER_DEPTH_EXCEEDED);
         }
-        Folder folder = saveWithUniqueName(Folder.create(workspaceId, parentId, name, userId));
+        Folder folder = saveWithUniqueName(Folder.create(workspaceId, null, name, userId));
         return node(folder, true, List.of());
     }
 
@@ -116,12 +113,12 @@ public class FolderService {
                 folder.isDefaultFolder(), folder.getOwnerUserId(), folder.isOwnedBy(userId), path);
     }
 
-    /** 소유자만. 기본 폴더는 소유자가 없어 관리자가 바꾼다 (REQ-044). */
+    /** 소유자만. 기본 폴더는 소유자가 없어 소유자가 바꾼다 (REQ-044). */
     @Transactional
     public FolderNode rename(Long folderId, Long userId, String name) {
         Folder folder = folderAccess.requireFolder(folderId);
         if (folder.isDefaultFolder()) {
-            folderAccess.requireAdmin(folder.getWorkspaceId(), userId);
+            folderAccess.requireWorkspaceOwner(folder.getWorkspaceId(), userId);
         } else {
             folderAccess.requireOwner(folderId, userId);
         }
@@ -191,6 +188,24 @@ public class FolderService {
     public void removeMember(Long folderId, Long ownerUserId, Long targetUserId) {
         folderAccess.requireOwner(folderId, ownerUserId);
         FolderMember member = folderMemberRepository.findByFolderIdAndUserId(folderId, targetUserId)
+                .orElseThrow(() -> new BusinessException(WorkspaceErrorCode.NOT_FOLDER_MEMBER));
+        folderMemberRepository.delete(member);
+    }
+
+    /**
+     * REQ-139. 초대받아 들어온 폴더에서 나간다. 폴더 소유자는 먼저 양도해야 한다 (REQ-043, MSG-045).
+     * 기본 폴더와, 폴더 접근 권한이 "모든 폴더"라서 들어오는 폴더는 나갈 수 없다.
+     */
+    @Transactional
+    public void leave(Long folderId, Long userId) {
+        Folder folder = folderAccess.requireAccess(folderId, userId);
+        if (folder.isDefaultFolder()) {
+            throw new BusinessException(WorkspaceErrorCode.DEFAULT_FOLDER_UNLEAVABLE);
+        }
+        if (folder.isOwnedBy(userId)) {
+            throw new BusinessException(WorkspaceErrorCode.FOLDER_OWNER_CANNOT_LEAVE);
+        }
+        FolderMember member = folderMemberRepository.findByFolderIdAndUserId(folderId, userId)
                 .orElseThrow(() -> new BusinessException(WorkspaceErrorCode.NOT_FOLDER_MEMBER));
         folderMemberRepository.delete(member);
     }

@@ -13,4 +13,6 @@ public interface JoinRequestRepository extends JpaRepository<JoinRequest, Long> 
     Optional<JoinRequest> findFirstByWorkspaceIdAndUserIdOrderByIdDesc(Long workspaceId, Long userId);
 
     List<JoinRequest> findByWorkspaceIdAndStatusOrderByRequestedAtAsc(Long workspaceId, JoinRequestStatus status);
+
+    void deleteByWorkspaceId(Long workspaceId);
 }

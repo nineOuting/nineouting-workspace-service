@@ -9,6 +9,7 @@ import com.nineouting.backend.common.web.error.BusinessException;
 import com.nineouting.backend.common.web.error.CommonErrorCode;
 import com.nineouting.backend.workspace.config.WorkspaceProperties;
 import com.nineouting.backend.workspace.domain.Folder;
+import com.nineouting.backend.workspace.domain.FolderAccessScope;
 import com.nineouting.backend.workspace.domain.FolderMember;
 import com.nineouting.backend.workspace.domain.InviteLink;
 import com.nineouting.backend.workspace.domain.JoinRequest;
@@ -66,15 +67,15 @@ public class MembershipService {
     private final Clock clock;
     private final SecureRandom random = new SecureRandom();
 
-    /** 관리자. 새로 발급하면 이전 링크는 무효가 된다. 유효 기간은 1일. */
+    /** 소유자. 새로 발급하면 이전 링크는 무효가 된다. 유효 기간은 1일. */
     @Transactional
-    public InviteLinkResponse issueInviteLink(Long workspaceId, Long adminUserId) {
-        folderAccess.requireAdmin(workspaceId, adminUserId);
+    public InviteLinkResponse issueInviteLink(Long workspaceId, Long ownerUserId) {
+        folderAccess.requireWorkspaceOwner(workspaceId, ownerUserId);
         String token = newToken();
         LocalDateTime expiresAt = now().plus(properties.inviteLinkTtl());
         inviteLinkRepository.findByWorkspaceId(workspaceId).ifPresentOrElse(
-                link -> link.reissue(token, expiresAt, adminUserId),
-                () -> inviteLinkRepository.save(new InviteLink(workspaceId, token, expiresAt, adminUserId)));
+                link -> link.reissue(token, expiresAt, ownerUserId),
+                () -> inviteLinkRepository.save(new InviteLink(workspaceId, token, expiresAt, ownerUserId)));
         return new InviteLinkResponse(token, properties.frontendBaseUrl() + "/invites/" + token, expiresAt);
     }
 
@@ -92,7 +93,7 @@ public class MembershipService {
         return new InviteInfoResponse(workspace.getId(), workspace.getName(), status);
     }
 
-    /** REQ-016. 관리자에게 알림 이벤트를 보낸다. 거절된 뒤에는 다시 요청할 수 있다. */
+    /** REQ-016. 소유자에게 알림 이벤트를 보낸다. 거절된 뒤에는 다시 요청할 수 있다. */
     @Transactional
     public JoinRequestResponse requestJoin(String token, Long userId) {
         Workspace workspace = workspaceOf(validLink(token));
@@ -103,15 +104,15 @@ public class MembershipService {
             throw new BusinessException(WorkspaceErrorCode.JOIN_REQUEST_PENDING);
         }
         JoinRequest request = joinRequestRepository.save(new JoinRequest(workspace.getId(), userId, now()));
-        Long adminUserId = adminOf(workspace.getId()).getUserId();
+        Long ownerUserId = ownerOf(workspace.getId()).getUserId();
         outboxEventWriter.append(MemberJoinRequested.TOPIC, workspace.getId().toString(), MemberJoinRequested.TYPE,
-                new MemberJoinRequested(workspace.getId(), workspace.getName(), request.getId(), userId, adminUserId));
+                new MemberJoinRequested(workspace.getId(), workspace.getName(), request.getId(), userId, ownerUserId));
         return new JoinRequestResponse(request.getId(), userId, null, null, request.getStatus(), request.getRequestedAt());
     }
 
     @Transactional(readOnly = true)
-    public List<JoinRequestResponse> pendingJoinRequests(Long workspaceId, Long adminUserId) {
-        folderAccess.requireAdmin(workspaceId, adminUserId);
+    public List<JoinRequestResponse> pendingJoinRequests(Long workspaceId, Long ownerUserId) {
+        folderAccess.requireWorkspaceOwner(workspaceId, ownerUserId);
         List<JoinRequest> requests = joinRequestRepository
                 .findByWorkspaceIdAndStatusOrderByRequestedAtAsc(workspaceId, JoinRequestStatus.PENDING);
         Map<Long, UserSummary> users = userClient.findUsers(requests.stream().map(JoinRequest::getUserId).toList());
@@ -124,9 +125,9 @@ public class MembershipService {
 
     /** REQ-035. 승인하면 멤버가 되고 요청자에게 알림 이벤트를 보낸다. */
     @Transactional
-    public void approve(Long workspaceId, Long joinRequestId, Long adminUserId) {
-        JoinRequest request = decidablePendingRequest(workspaceId, joinRequestId, adminUserId);
-        request.decide(JoinRequestStatus.APPROVED, adminUserId, now());
+    public void approve(Long workspaceId, Long joinRequestId, Long ownerUserId) {
+        JoinRequest request = decidablePendingRequest(workspaceId, joinRequestId, ownerUserId);
+        request.decide(JoinRequestStatus.APPROVED, ownerUserId, now());
         if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, request.getUserId())) {
             workspaceMemberRepository.save(new WorkspaceMember(workspaceId, request.getUserId(), WorkspaceRole.MEMBER, now()));
         }
@@ -137,57 +138,64 @@ public class MembershipService {
 
     /** REQ-017. 요청자는 초대 화면에서 REJECTED 상태를 보고 다시 요청할 수 있다. */
     @Transactional
-    public void reject(Long workspaceId, Long joinRequestId, Long adminUserId) {
-        decidablePendingRequest(workspaceId, joinRequestId, adminUserId)
-                .decide(JoinRequestStatus.REJECTED, adminUserId, now());
+    public void reject(Long workspaceId, Long joinRequestId, Long ownerUserId) {
+        decidablePendingRequest(workspaceId, joinRequestId, ownerUserId)
+                .decide(JoinRequestStatus.REJECTED, ownerUserId, now());
     }
 
-    /** REQ-033. 관리자만 볼 수 있다. */
+    /** REQ-033. 소유자만 볼 수 있다. */
     @Transactional(readOnly = true)
-    public List<MemberResponse> members(Long workspaceId, Long adminUserId) {
-        folderAccess.requireAdmin(workspaceId, adminUserId);
+    public List<MemberResponse> members(Long workspaceId, Long ownerUserId) {
+        folderAccess.requireWorkspaceOwner(workspaceId, ownerUserId);
         List<WorkspaceMember> members = workspaceMemberRepository.findByWorkspaceIdOrderByJoinedAtAsc(workspaceId);
         Map<Long, UserSummary> users = userClient.findUsers(members.stream().map(WorkspaceMember::getUserId).toList());
         return members.stream().map(member -> {
             UserSummary user = users.get(member.getUserId());
             return new MemberResponse(member.getUserId(), user == null ? null : user.name(),
                     user == null ? null : user.email(), user == null ? null : user.profileImageUrl(),
-                    member.getRole(), member.getJoinedAt());
+                    member.getRole(), member.getFolderAccess(), member.getJoinedAt());
         }).toList();
+    }
+
+    /** REQ-128. 소유자만 바꾼다 */
+    @Transactional
+    public void changeFolderAccess(Long workspaceId, Long ownerUserId, Long targetUserId, FolderAccessScope scope) {
+        folderAccess.requireWorkspaceOwner(workspaceId, ownerUserId);
+        folderAccess.requireMember(workspaceId, targetUserId).changeFolderAccess(scope);
     }
 
     /** REQ-036 내보내기. 내보낸 사람이 가진 폴더는 자동으로 양도한다. */
     @Transactional
-    public void removeMember(Long workspaceId, Long adminUserId, Long targetUserId) {
-        folderAccess.requireAdmin(workspaceId, adminUserId);
-        if (adminUserId.equals(targetUserId)) {
-            throw new BusinessException(WorkspaceErrorCode.ADMIN_CANNOT_LEAVE);
+    public void removeMember(Long workspaceId, Long ownerUserId, Long targetUserId) {
+        folderAccess.requireWorkspaceOwner(workspaceId, ownerUserId);
+        if (ownerUserId.equals(targetUserId)) {
+            throw new BusinessException(WorkspaceErrorCode.OWNER_CANNOT_LEAVE);
         }
         WorkspaceMember target = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, targetUserId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
-        transferOwnedFolders(workspaceId, targetUserId, adminUserId);
+        transferOwnedFolders(workspaceId, targetUserId, ownerUserId);
         leaveWorkspace(target);
     }
 
-    /** REQ-036 관리자 양도. 관리자는 워크스페이스마다 1명이므로 넘기는 사람은 일반 멤버가 된다. */
+    /** REQ-036 소유자 양도. 소유자는 워크스페이스마다 1명이므로 넘기는 사람은 일반 멤버가 된다. */
     @Transactional
-    public void transferAdmin(Long workspaceId, Long adminUserId, Long targetUserId) {
-        WorkspaceMember admin = folderAccess.requireAdmin(workspaceId, adminUserId);
-        if (adminUserId.equals(targetUserId)) {
+    public void transferOwnership(Long workspaceId, Long ownerUserId, Long targetUserId) {
+        WorkspaceMember owner = folderAccess.requireWorkspaceOwner(workspaceId, ownerUserId);
+        if (ownerUserId.equals(targetUserId)) {
             return;
         }
         WorkspaceMember target = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, targetUserId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
-        admin.changeRole(WorkspaceRole.MEMBER);
-        target.changeRole(WorkspaceRole.ADMIN);
+        owner.changeRole(WorkspaceRole.MEMBER);
+        target.changeRole(WorkspaceRole.OWNER);
     }
 
-    /** REQ-032. 관리자는 양도한 뒤에, 폴더 소유자는 폴더를 양도한 뒤에 나갈 수 있다. */
+    /** REQ-032. 소유자는 양도한 뒤에, 폴더 소유자는 폴더를 양도한 뒤에 나갈 수 있다. */
     @Transactional
     public void leave(Long workspaceId, Long userId) {
         WorkspaceMember member = folderAccess.requireMember(workspaceId, userId);
-        if (member.isAdmin()) {
-            throw new BusinessException(WorkspaceErrorCode.ADMIN_CANNOT_LEAVE);
+        if (member.isOwner()) {
+            throw new BusinessException(WorkspaceErrorCode.OWNER_CANNOT_LEAVE);
         }
         if (!folderRepository.findByWorkspaceIdAndOwnerUserId(workspaceId, userId).isEmpty()) {
             throw new BusinessException(WorkspaceErrorCode.FOLDER_OWNERSHIP_REMAINING);
@@ -196,15 +204,15 @@ public class MembershipService {
     }
 
     /**
-     * 양도 없이 빠지는 사람의 폴더: 가장 먼저 초대된 폴더 멤버에게, 멤버가 없으면 관리자에게 넘긴다.
+     * 양도 없이 빠지는 사람의 폴더: 가장 먼저 초대된 폴더 멤버에게, 멤버가 없으면 소유자에게 넘긴다.
      */
-    private void transferOwnedFolders(Long workspaceId, Long leavingUserId, Long adminUserId) {
+    private void transferOwnedFolders(Long workspaceId, Long leavingUserId, Long ownerUserId) {
         for (Folder folder : folderRepository.findByWorkspaceIdAndOwnerUserId(workspaceId, leavingUserId)) {
             Optional<FolderMember> next = folderMemberRepository.findByFolderIdOrderByInvitedAtAscIdAsc(folder.getId())
                     .stream()
                     .filter(member -> !member.getUserId().equals(leavingUserId))
                     .findFirst();
-            Long newOwner = next.map(FolderMember::getUserId).orElse(adminUserId);
+            Long newOwner = next.map(FolderMember::getUserId).orElse(ownerUserId);
             folderMemberRepository.findByFolderIdAndUserId(folder.getId(), newOwner).ifPresent(folderMemberRepository::delete);
             folder.transferOwner(newOwner);
         }
@@ -224,8 +232,8 @@ public class MembershipService {
         workspaceMemberRepository.delete(member);
     }
 
-    private JoinRequest decidablePendingRequest(Long workspaceId, Long joinRequestId, Long adminUserId) {
-        folderAccess.requireAdmin(workspaceId, adminUserId);
+    private JoinRequest decidablePendingRequest(Long workspaceId, Long joinRequestId, Long ownerUserId) {
+        folderAccess.requireWorkspaceOwner(workspaceId, ownerUserId);
         JoinRequest request = joinRequestRepository.findById(joinRequestId)
                 .filter(found -> found.getWorkspaceId().equals(workspaceId))
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
@@ -250,9 +258,9 @@ public class MembershipService {
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
     }
 
-    private WorkspaceMember adminOf(Long workspaceId) {
-        return workspaceMemberRepository.findByWorkspaceIdAndRole(workspaceId, WorkspaceRole.ADMIN)
-                .orElseThrow(() -> new IllegalStateException("관리자가 없는 워크스페이스: " + workspaceId));
+    private WorkspaceMember ownerOf(Long workspaceId) {
+        return workspaceMemberRepository.findByWorkspaceIdAndRole(workspaceId, WorkspaceRole.OWNER)
+                .orElseThrow(() -> new IllegalStateException("소유자가 없는 워크스페이스: " + workspaceId));
     }
 
     private String newToken() {

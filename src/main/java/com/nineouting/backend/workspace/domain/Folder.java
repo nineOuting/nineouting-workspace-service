@@ -12,7 +12,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 프로젝트 폴더(parentId 없음)와 그 하위 폴더. 2단계까지만 만든다.
+ * 프로젝트 폴더. 폴더 안에 폴더는 만들 수 없다 (REQ-040, 2026-10-26). parentId는 예전 하위 폴더 구조로, 새로 만들 때는 늘 null
  * 기본 폴더는 워크스페이스마다 1개 자동으로 생기고, 소유자가 없으며 지울 수 없다 (REQ-044).
  */
 @Getter

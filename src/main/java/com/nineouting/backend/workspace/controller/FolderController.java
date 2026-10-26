@@ -77,6 +77,13 @@ public class FolderController {
         return ApiResponse.ok();
     }
 
+    /** REQ-139. 경로가 더 구체적이라 아래 {userId}보다 먼저 맞는다 */
+    @DeleteMapping("/api/folders/{folderId}/members/me")
+    public ApiResponse<Void> leave(@CurrentUser AuthenticatedUser user, @PathVariable Long folderId) {
+        folderService.leave(folderId, user.userId());
+        return ApiResponse.ok();
+    }
+
     /** REQ-042 */
     @DeleteMapping("/api/folders/{folderId}/members/{userId}")
     public ApiResponse<Void> removeMember(@CurrentUser AuthenticatedUser user, @PathVariable Long folderId,
