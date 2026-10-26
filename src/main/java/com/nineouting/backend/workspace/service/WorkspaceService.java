@@ -1,5 +1,7 @@
 package com.nineouting.backend.workspace.service;
 
+import com.nineouting.backend.common.event.workspace.FolderDeleted;
+import com.nineouting.backend.common.outbox.OutboxEventWriter;
 import com.nineouting.backend.common.web.error.BusinessException;
 import com.nineouting.backend.common.web.error.CommonErrorCode;
 import com.nineouting.backend.workspace.domain.Folder;
@@ -9,7 +11,11 @@ import com.nineouting.backend.workspace.domain.WorkspaceMember;
 import com.nineouting.backend.workspace.domain.WorkspaceRole;
 import com.nineouting.backend.workspace.dto.WorkspaceDetailResponse;
 import com.nineouting.backend.workspace.dto.WorkspaceResponse;
+import com.nineouting.backend.workspace.repository.FolderMemberRepository;
 import com.nineouting.backend.workspace.repository.FolderRepository;
+import com.nineouting.backend.workspace.repository.FolderVisitRepository;
+import com.nineouting.backend.workspace.repository.InviteLinkRepository;
+import com.nineouting.backend.workspace.repository.JoinRequestRepository;
 import com.nineouting.backend.workspace.repository.LastWorkspaceRepository;
 import com.nineouting.backend.workspace.repository.WorkspaceMemberRepository;
 import com.nineouting.backend.workspace.repository.WorkspaceRepository;
@@ -35,7 +41,12 @@ public class WorkspaceService {
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final FolderRepository folderRepository;
     private final LastWorkspaceRepository lastWorkspaceRepository;
+    private final FolderMemberRepository folderMemberRepository;
+    private final FolderVisitRepository folderVisitRepository;
+    private final InviteLinkRepository inviteLinkRepository;
+    private final JoinRequestRepository joinRequestRepository;
     private final FolderAccess folderAccess;
+    private final OutboxEventWriter outboxEventWriter;
     private final Clock clock;
 
     /** 만든 사람이 소유자가 되고, 기본 폴더가 자동으로 생긴다. */
@@ -89,5 +100,27 @@ public class WorkspaceService {
 
     private LocalDateTime now() {
         return LocalDateTime.now(clock);
+    }
+
+    /**
+     * REQ-138. 소유자만. 워크스페이스와 그 안의 폴더·멤버·초대를 지운다.
+     * 폴더 안의 회의·회의록은 폴더 삭제(REQ-058)와 같은 이벤트로 meeting·minutes가 지운다.
+     */
+    @Transactional
+    public void delete(Long workspaceId, Long userId) {
+        folderAccess.requireWorkspaceOwner(workspaceId, userId);
+        List<Folder> folders = folderRepository.findByWorkspaceId(workspaceId);
+        List<Long> folderIds = folders.stream().map(Folder::getId).toList();
+
+        folderMemberRepository.deleteByFolderIdIn(folderIds);
+        folderVisitRepository.deleteByFolderIdIn(folderIds);
+        folderRepository.deleteAll(folders);
+        workspaceMemberRepository.deleteByWorkspaceId(workspaceId);
+        inviteLinkRepository.deleteByWorkspaceId(workspaceId);
+        joinRequestRepository.deleteByWorkspaceId(workspaceId);
+        lastWorkspaceRepository.deleteByWorkspaceId(workspaceId);
+        workspaceRepository.deleteById(workspaceId);
+        outboxEventWriter.append(FolderDeleted.TOPIC, workspaceId.toString(), FolderDeleted.TYPE,
+                new FolderDeleted(workspaceId, folderIds));
     }
 }

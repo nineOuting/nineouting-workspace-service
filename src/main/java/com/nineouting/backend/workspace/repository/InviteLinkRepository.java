@@ -9,4 +9,6 @@ public interface InviteLinkRepository extends JpaRepository<InviteLink, Long> {
     Optional<InviteLink> findByWorkspaceId(Long workspaceId);
 
     Optional<InviteLink> findByToken(String token);
+
+    void deleteByWorkspaceId(Long workspaceId);
 }

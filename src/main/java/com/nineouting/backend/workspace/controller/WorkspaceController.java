@@ -50,6 +50,13 @@ public class WorkspaceController {
     }
 
     /** REQ-028 */
+    /** REQ-138. 소유자만. 안의 폴더·회의·회의록도 함께 지운다 */
+    @DeleteMapping("/{workspaceId}")
+    public ApiResponse<Void> delete(@CurrentUser AuthenticatedUser user, @PathVariable Long workspaceId) {
+        workspaceService.delete(workspaceId, user.userId());
+        return ApiResponse.ok();
+    }
+
     @GetMapping("/{workspaceId}")
     public ApiResponse<WorkspaceDetailResponse> get(@CurrentUser AuthenticatedUser user, @PathVariable Long workspaceId) {
         return ApiResponse.ok(workspaceService.get(workspaceId, user.userId()));

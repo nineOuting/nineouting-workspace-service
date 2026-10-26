@@ -26,6 +26,26 @@ class MembershipFlowTest extends ApiTestSupport {
     }
 
     @Test
+    void 소유자는_워크스페이스를_지우고_안의_폴더도_함께_지워진다() throws Exception {
+        Long owner = newUser();
+        Long member = newUser();
+        Long workspaceId = createWorkspace(owner);
+        join(workspaceId, owner, member);
+        Long defaultFolder = defaultFolder(workspaceId, owner);
+        Long project = createFolder(workspaceId, member, "기획", null);
+
+        call(member, deleteRequest("/api/workspaces/" + workspaceId), null).andExpect(status().isForbidden());
+        call(owner, deleteRequest("/api/workspaces/" + workspaceId), null).andExpect(status().isOk());
+
+        call(member, getRequest("/api/workspaces"), null).andExpect(jsonPath("$.data.length()").value(0));
+        call(owner, getRequest("/api/workspaces/" + workspaceId), null).andExpect(status().is4xxClientError());
+        call(member, getRequest("/api/folders/" + project), null).andExpect(status().isNotFound());
+        // 회의·회의록은 폴더 삭제와 같은 이벤트로 meeting·minutes가 지운다
+        assertThat(outboxContains("FolderDeleted",
+                "\"workspaceId\":%d,\"folderIds\":[%d,%d]".formatted(workspaceId, defaultFolder, project))).isTrue();
+    }
+
+    @Test
     void 멤버가_아니면_워크스페이스에_들어갈_수_없다() throws Exception {
         Long workspaceId = createWorkspace(newUser());
 
