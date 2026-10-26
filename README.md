@@ -28,10 +28,10 @@
 | `SERVER_PORT` | `8082` | |
 | `DB_URL` | `jdbc:postgresql://localhost:5434/workspace_db` | |
 | `DB_USERNAME` / `DB_PASSWORD` | `workspace_service` | |
-| `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | 참여 요청·승인, 폴더 삭제 이벤트 |
+| `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | 참여 요청·승인, 이메일 초대, 폴더·워크스페이스 삭제 이벤트 |
 | `JWT_JWKS_URI` | `http://localhost:8081/.well-known/jwks.json` | access 토큰 검증 공개키 |
 | `USER_SERVICE_URL` | `http://localhost:8081` | 사용자 이름·이메일 조회 (공통 모듈 `client-common`) |
-| `FRONTEND_BASE_URL` | `http://localhost:5173` | 초대 링크 주소 |
+| `FRONTEND_BASE_URL` | `http://localhost:5173` | 초대 링크 주소 (이메일 초대 링크는 notification이 만든다) |
 | `SPRING_PROFILES_ACTIVE` | — | `local`: 사람이 읽는 로그, 추적 전송 끔 |
 
 ## Docker 이미지
