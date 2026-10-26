@@ -113,6 +113,24 @@ class FolderFlowTest extends ApiTestSupport {
     }
 
     @Test
+    void 초대받은_멤버는_폴더에서_나갈_수_있고_소유자는_양도해야_나간다() throws Exception {
+        Long project = createFolder(workspaceId, owner, "기획", null);
+        inviteToFolder(project, owner, member);
+
+        call(owner, deleteRequest("/api/folders/" + project + "/members/me"), null)
+                .andExpect(jsonPath("$.code").value("FOLDER_OWNER_CANNOT_LEAVE"));
+        call(member, deleteRequest("/api/folders/" + project + "/members/me"), null).andExpect(status().isOk());
+        call(member, getRequest("/api/folders/" + project), null).andExpect(status().isForbidden());
+
+        call(member, deleteRequest("/api/folders/" + defaultFolder(workspaceId, member) + "/members/me"), null)
+                .andExpect(jsonPath("$.code").value("DEFAULT_FOLDER_UNLEAVABLE"));
+        call(workspaceOwner, putRequest("/api/workspaces/" + workspaceId + "/members/" + member + "/folder-access"),
+                "{\"folderAccess\":\"ALL\"}");
+        call(member, deleteRequest("/api/folders/" + project + "/members/me"), null)
+                .andExpect(jsonPath("$.code").value("NOT_FOLDER_MEMBER"));
+    }
+
+    @Test
     void 소유권은_폴더_멤버에게만_넘길_수_있고_넘긴_사람은_멤버로_남는다() throws Exception {
         Long project = createFolder(workspaceId, owner, "기획", null);
 

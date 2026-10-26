@@ -192,6 +192,24 @@ public class FolderService {
         folderMemberRepository.delete(member);
     }
 
+    /**
+     * REQ-139. 초대받아 들어온 폴더에서 나간다. 폴더 소유자는 먼저 양도해야 한다 (REQ-043, MSG-045).
+     * 기본 폴더와, 폴더 접근 권한이 "모든 폴더"라서 들어오는 폴더는 나갈 수 없다.
+     */
+    @Transactional
+    public void leave(Long folderId, Long userId) {
+        Folder folder = folderAccess.requireAccess(folderId, userId);
+        if (folder.isDefaultFolder()) {
+            throw new BusinessException(WorkspaceErrorCode.DEFAULT_FOLDER_UNLEAVABLE);
+        }
+        if (folder.isOwnedBy(userId)) {
+            throw new BusinessException(WorkspaceErrorCode.FOLDER_OWNER_CANNOT_LEAVE);
+        }
+        FolderMember member = folderMemberRepository.findByFolderIdAndUserId(folderId, userId)
+                .orElseThrow(() -> new BusinessException(WorkspaceErrorCode.NOT_FOLDER_MEMBER));
+        folderMemberRepository.delete(member);
+    }
+
     /** REQ-043. 초대된 폴더 멤버에게만 넘길 수 있고, 넘긴 사람은 일반 폴더 멤버로 남는다. */
     @Transactional
     public void transferOwner(Long folderId, Long ownerUserId, Long targetUserId) {
