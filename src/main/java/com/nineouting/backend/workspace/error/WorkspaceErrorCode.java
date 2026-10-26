@@ -15,6 +15,8 @@ public enum WorkspaceErrorCode implements ErrorCode {
 
     NOT_WORKSPACE_MEMBER(HttpStatus.FORBIDDEN, "워크스페이스 멤버가 아닙니다"),
     INVITE_LINK_INVALID(HttpStatus.NOT_FOUND, "초대 링크가 만료되었거나 올바르지 않습니다"),
+    INVITATION_INVALID(HttpStatus.NOT_FOUND, "초대가 만료되었거나 이미 사용되었습니다"),
+    INVITATION_EMAIL_MISMATCH(HttpStatus.FORBIDDEN, "초대받은 이메일 계정으로 로그인해 주세요"),
     ALREADY_MEMBER(HttpStatus.CONFLICT, "이미 참여 중인 워크스페이스입니다"),
     JOIN_REQUEST_PENDING(HttpStatus.CONFLICT, "이미 참여를 요청했습니다. 승인을 기다려 주세요"),
     JOIN_REQUEST_ALREADY_DECIDED(HttpStatus.CONFLICT, "이미 처리된 참여 요청입니다"),

@@ -26,6 +26,55 @@ class MembershipFlowTest extends ApiTestSupport {
     }
 
     @Test
+    void 이메일로_초대받은_계정은_승인_없이_바로_들어오고_다른_계정은_수락할_수_없다() throws Exception {
+        Long owner = newUser();
+        Long member = newUser();
+        Long invitee = newUser();
+        Long workspaceId = createWorkspace(owner);
+        join(workspaceId, owner, member);
+        String path = "/api/workspaces/" + workspaceId + "/invitations";
+        String body = "{\"email\":\"USER%d@Example.com\"}".formatted(invitee);
+
+        call(member, post(path), body).andExpect(status().isForbidden());
+        call(owner, post(path), "{\"email\":\"메일 아님\"}").andExpect(status().isBadRequest());
+        call(owner, post(path), body)
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.email").value("user" + invitee + "@example.com"));
+        String oldToken = invitationToken("user" + invitee + "@example.com");
+        // 같은 이메일을 다시 초대하면 이전 링크는 못 쓴다
+        call(owner, post(path), body).andExpect(status().isCreated());
+        String token = invitationToken("user" + invitee + "@example.com");
+        call(invitee, getRequest("/api/workspaces/invitations/" + oldToken), null)
+                .andExpect(jsonPath("$.code").value("INVITATION_INVALID"));
+
+        call(member, getRequest("/api/workspaces/invitations/" + token), null)
+                .andExpect(jsonPath("$.data.emailMatches").value(false));
+        call(member, post("/api/workspaces/invitations/" + token + "/accept"), null)
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("INVITATION_EMAIL_MISMATCH"));
+        call(invitee, getRequest("/api/workspaces/invitations/" + token), null)
+                .andExpect(jsonPath("$.data.workspaceName").value("팀 워크스페이스"))
+                .andExpect(jsonPath("$.data.emailMatches").value(true))
+                .andExpect(jsonPath("$.data.member").value(false));
+        call(invitee, post("/api/workspaces/invitations/" + token + "/accept"), null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.myRole").value("MEMBER"));
+
+        call(invitee, getRequest("/api/workspaces/" + workspaceId), null).andExpect(status().isOk());
+        call(invitee, post("/api/workspaces/invitations/" + token + "/accept"), null)
+                .andExpect(jsonPath("$.code").value("INVITATION_INVALID"));
+    }
+
+    /** 초대 메일 이벤트에 담긴 토큰 (메일로만 가므로 응답에는 없다). 같은 이메일이면 가장 최근 것 */
+    private String invitationToken(String email) {
+        return outboxEventRepository.findAll().stream()
+                .filter(event -> event.getEventType().equals("MemberInvitedByEmail") && event.getPayload().contains(email))
+                .reduce((first, second) -> second)
+                .map(event -> com.jayway.jsonpath.JsonPath.<String>read(event.getPayload(), "$.payload.token"))
+                .orElseThrow();
+    }
+
+    @Test
     void 소유자는_워크스페이스를_지우고_안의_폴더도_함께_지워진다() throws Exception {
         Long owner = newUser();
         Long member = newUser();

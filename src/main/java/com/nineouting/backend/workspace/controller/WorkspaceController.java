@@ -4,6 +4,8 @@ import com.nineouting.backend.common.security.jwt.AuthenticatedUser;
 import com.nineouting.backend.common.security.web.CurrentUser;
 import com.nineouting.backend.common.web.response.ApiResponse;
 import com.nineouting.backend.workspace.dto.CreateWorkspaceRequest;
+import com.nineouting.backend.workspace.dto.EmailInvitationResponse;
+import com.nineouting.backend.workspace.dto.EmailInviteRequest;
 import com.nineouting.backend.workspace.dto.FolderAccessRequest;
 import com.nineouting.backend.workspace.dto.InviteLinkResponse;
 import com.nineouting.backend.workspace.dto.JoinRequestResponse;
@@ -11,6 +13,7 @@ import com.nineouting.backend.workspace.dto.MemberResponse;
 import com.nineouting.backend.workspace.dto.UserIdRequest;
 import com.nineouting.backend.workspace.dto.WorkspaceDetailResponse;
 import com.nineouting.backend.workspace.dto.WorkspaceResponse;
+import com.nineouting.backend.workspace.service.EmailInvitationService;
 import com.nineouting.backend.workspace.service.MembershipService;
 import com.nineouting.backend.workspace.service.WorkspaceService;
 import jakarta.validation.Valid;
@@ -34,6 +37,7 @@ public class WorkspaceController {
 
     private final WorkspaceService workspaceService;
     private final MembershipService membershipService;
+    private final EmailInvitationService emailInvitationService;
 
     /** REQ-031 */
     @PostMapping
@@ -70,6 +74,15 @@ public class WorkspaceController {
     }
 
     /** REQ-034 */
+    /** REQ-127. 소유자만. 이메일로 초대 메일을 보낸다 (받은 사람은 승인 없이 바로 들어온다) */
+    @PostMapping("/{workspaceId}/invitations")
+    public ResponseEntity<ApiResponse<EmailInvitationResponse>> inviteByEmail(@CurrentUser AuthenticatedUser user,
+                                                                              @PathVariable Long workspaceId,
+                                                                              @Valid @RequestBody EmailInviteRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok(emailInvitationService.invite(workspaceId, user.userId(), request.email())));
+    }
+
     @PostMapping("/{workspaceId}/invite-link")
     public ApiResponse<InviteLinkResponse> issueInviteLink(@CurrentUser AuthenticatedUser user,
                                                            @PathVariable Long workspaceId) {

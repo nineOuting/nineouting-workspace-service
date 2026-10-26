@@ -11,6 +11,7 @@ import com.nineouting.backend.workspace.domain.WorkspaceMember;
 import com.nineouting.backend.workspace.domain.WorkspaceRole;
 import com.nineouting.backend.workspace.dto.WorkspaceDetailResponse;
 import com.nineouting.backend.workspace.dto.WorkspaceResponse;
+import com.nineouting.backend.workspace.repository.EmailInvitationRepository;
 import com.nineouting.backend.workspace.repository.FolderMemberRepository;
 import com.nineouting.backend.workspace.repository.FolderRepository;
 import com.nineouting.backend.workspace.repository.FolderVisitRepository;
@@ -45,6 +46,7 @@ public class WorkspaceService {
     private final FolderVisitRepository folderVisitRepository;
     private final InviteLinkRepository inviteLinkRepository;
     private final JoinRequestRepository joinRequestRepository;
+    private final EmailInvitationRepository emailInvitationRepository;
     private final FolderAccess folderAccess;
     private final OutboxEventWriter outboxEventWriter;
     private final Clock clock;
@@ -118,6 +120,7 @@ public class WorkspaceService {
         workspaceMemberRepository.deleteByWorkspaceId(workspaceId);
         inviteLinkRepository.deleteByWorkspaceId(workspaceId);
         joinRequestRepository.deleteByWorkspaceId(workspaceId);
+        emailInvitationRepository.deleteByWorkspaceId(workspaceId);
         lastWorkspaceRepository.deleteByWorkspaceId(workspaceId);
         workspaceRepository.deleteById(workspaceId);
         outboxEventWriter.append(FolderDeleted.TOPIC, workspaceId.toString(), FolderDeleted.TYPE,
