@@ -104,6 +104,26 @@ class MembershipFlowTest extends ApiTestSupport {
     }
 
     @Test
+    void 초대_링크로_승인_없이_바로_참여한다() throws Exception {
+        Long workspaceOwner = newUser();
+        Long guest = newUser();
+        Long workspaceId = createWorkspace(workspaceOwner);
+        String token = data(call(workspaceOwner, post("/api/workspaces/" + workspaceId + "/invite-link"), null), "$.data.token");
+
+        call(guest, post("/api/invites/" + token + "/join"), null)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.workspaceId").value(workspaceId))
+                .andExpect(jsonPath("$.data.myRole").value("MEMBER"));
+        call(guest, post("/api/invites/" + token + "/join"), null).andExpect(status().isOk());
+
+        call(guest, getRequest("/api/workspaces/" + workspaceId), null).andExpect(jsonPath("$.data.myRole").value("MEMBER"));
+        call(guest, getRequest("/api/invites/" + token), null).andExpect(jsonPath("$.data.myStatus").value("MEMBER"));
+        call(newUser(), post("/api/invites/wrong-token/join"), null)
+                .andExpect(jsonPath("$.code").value("INVITE_LINK_INVALID"));
+    }
+
+    /** REQ-016~017·035 (레거시): 참여 요청 → 승인 */
+    @Test
     void 초대_링크로_요청하고_소유자가_승인하면_멤버가_된다() throws Exception {
         Long workspaceOwner = newUser();
         Long guest = newUser();

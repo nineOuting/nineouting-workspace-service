@@ -2,14 +2,22 @@ package com.nineouting.backend.workspace;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.nineouting.backend.workspace.service.TrashService;
+import java.time.Duration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 
 class FolderFlowTest extends ApiTestSupport {
+
+    @Autowired
+    TrashService trashService;
 
     private Long workspaceOwner;
     private Long owner;
@@ -151,7 +159,7 @@ class FolderFlowTest extends ApiTestSupport {
     }
 
     @Test
-    void 폴더를_지우면_삭제_이벤트가_남는다() throws Exception {
+    void 폴더를_지우면_쓰레기통으로_가서_안_보이고_복구하면_멤버와_함께_돌아온다() throws Exception {
         Long project = createFolder(workspaceId, owner, "기획", null);
         inviteToFolder(project, workspaceOwner, member);
 
@@ -159,7 +167,63 @@ class FolderFlowTest extends ApiTestSupport {
         call(owner, deleteRequest("/api/folders/" + project), null).andExpect(status().isOk());
 
         call(owner, getRequest("/api/folders/" + project), null).andExpect(status().isNotFound());
-        assertThat(outboxContains("FolderDeleted", "\"folderIds\":[" + project + "]")).isTrue();
+        call(member, getRequest("/api/workspaces/" + workspaceId + "/folders"), null)
+                .andExpect(jsonPath("$.data[*].name").value(not(hasItem("기획"))));
+        // 영구 삭제 전에는 안의 회의·회의록을 지우지 않는다
+        assertThat(outboxContains("FolderDeleted", "\"folderIds\":[" + project + "]")).isFalse();
+
+        // 지운 사람과 워크스페이스 소유자만 쓰레기통에서 본다
+        call(owner, getRequest("/api/workspaces/" + workspaceId + "/trash"), null)
+                .andExpect(jsonPath("$.data[0].folderId").value(project))
+                .andExpect(jsonPath("$.data[0].deletedByUserId").value(owner))
+                .andExpect(jsonPath("$.data[0].deletedByName").value("user" + owner))
+                .andExpect(jsonPath("$.data[0].purgeAt").isNotEmpty());
+        call(workspaceOwner, getRequest("/api/workspaces/" + workspaceId + "/trash"), null)
+                .andExpect(jsonPath("$.data.length()").value(1));
+        call(member, getRequest("/api/workspaces/" + workspaceId + "/trash"), null)
+                .andExpect(jsonPath("$.data.length()").value(0));
+        call(member, post("/api/workspaces/" + workspaceId + "/trash/folders/" + project + "/restore"), null)
+                .andExpect(jsonPath("$.code").value("TRASH_FORBIDDEN"));
+
+        call(workspaceOwner, post("/api/workspaces/" + workspaceId + "/trash/folders/" + project + "/restore"), null)
+                .andExpect(status().isOk());
+        call(member, getRequest("/api/folders/" + project), null).andExpect(status().isOk());
+        call(owner, getRequest("/api/workspaces/" + workspaceId + "/trash"), null)
+                .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test
+    void 쓰레기통에_있는_폴더와_같은_이름은_새로_만들_수_있고_그러면_복구는_막힌다() throws Exception {
+        Long project = createFolder(workspaceId, owner, "기획", null);
+        call(owner, deleteRequest("/api/folders/" + project), null).andExpect(status().isOk());
+
+        createFolder(workspaceId, member, "기획", null);
+
+        call(owner, post("/api/workspaces/" + workspaceId + "/trash/folders/" + project + "/restore"), null)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("FOLDER_NAME_DUPLICATED"));
+    }
+
+    @Test
+    void 영구_삭제하거나_보관_기간이_지나면_회의_회의록을_지우는_이벤트가_나간다() throws Exception {
+        Long first = createFolder(workspaceId, owner, "첫째", null);
+        Long second = createFolder(workspaceId, owner, "둘째", null);
+        call(owner, deleteRequest("/api/folders/" + first), null).andExpect(status().isOk());
+        call(owner, deleteRequest("/api/folders/" + second), null).andExpect(status().isOk());
+
+        call(owner, deleteRequest("/api/workspaces/" + workspaceId + "/trash/folders/" + first), null)
+                .andExpect(status().isOk());
+        assertThat(outboxContains("FolderDeleted", "\"folderIds\":[" + first + "]")).isTrue();
+        call(owner, post("/api/workspaces/" + workspaceId + "/trash/folders/" + first + "/restore"), null)
+                .andExpect(status().isNotFound());
+
+        trashService.purgeExpired();
+        assertThat(outboxContains("FolderDeleted", "\"folderIds\":[" + second + "]")).isFalse();
+        clock.advance(Duration.ofDays(91));
+        trashService.purgeExpired();
+        assertThat(outboxContains("FolderDeleted", "\"folderIds\":[" + second + "]")).isTrue();
+        call(owner, getRequest("/api/workspaces/" + workspaceId + "/trash"), null)
+                .andExpect(jsonPath("$.data.length()").value(0));
     }
 
     @Test

@@ -31,7 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * 이메일로 멤버 초대 (REQ-127, 2026-10-26 기획서). 소유자만 보낸다.
  * 받은 사람은 링크를 열어 로그인(가입 전이면 가입)한 뒤 수락하면 승인 없이 바로 멤버가 된다. 초대받은 이메일 계정만 수락할 수 있다.
- * 초대 링크·참여 요청(REQ-015~016, 034~035)은 그대로 둔다. 유효 기간은 초대 링크와 같다.
+ * 초대 링크·참여 요청(REQ-015·034, 016·035 레거시)은 그대로 둔다. 유효 기간은 초대 링크와 같다.
  */
 @Service
 @RequiredArgsConstructor

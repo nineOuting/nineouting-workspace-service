@@ -13,7 +13,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** 워크스페이스·폴더 즐겨찾기 (REQ-143~144). 지워진 대상이나 들어갈 수 없게 된 대상은 읽을 때 뺀다 */
+/** 워크스페이스·폴더 즐겨찾기 (REQ-151~153). 지워진 대상이나 들어갈 수 없게 된 대상은 읽을 때 뺀다 */
 @Getter
 @Entity
 @Table(name = "favorites")

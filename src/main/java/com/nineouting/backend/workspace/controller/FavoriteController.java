@@ -14,20 +14,20 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 워크스페이스·폴더 즐겨찾기 (REQ-143~144) */
+/** 워크스페이스·폴더 즐겨찾기 (REQ-151~153) */
 @RestController
 @RequiredArgsConstructor
 public class FavoriteController {
 
     private final FavoriteService favoriteService;
 
-    /** REQ-143 */
+    /** REQ-151 */
     @GetMapping("/api/users/me/favorites")
     public ApiResponse<List<FavoriteResponse>> list(@CurrentUser AuthenticatedUser user) {
         return ApiResponse.ok(favoriteService.list(user.userId()));
     }
 
-    /** REQ-144 */
+    /** REQ-153 */
     @PutMapping("/api/workspaces/{workspaceId}/favorite")
     public ApiResponse<Void> addWorkspace(@CurrentUser AuthenticatedUser user, @PathVariable Long workspaceId) {
         favoriteService.addWorkspace(workspaceId, user.userId());

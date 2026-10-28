@@ -100,7 +100,7 @@ public class FolderController {
         return ApiResponse.ok();
     }
 
-    /** REQ-024~025 */
+    /** REQ-024~025 (레거시) */
     @GetMapping("/api/users/me/recent-folders")
     public ApiResponse<List<RecentFolderResponse>> recent(@CurrentUser AuthenticatedUser user) {
         return ApiResponse.ok(folderService.recent(user.userId()));
