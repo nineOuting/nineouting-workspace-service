@@ -20,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 워크스페이스·폴더 즐겨찾기 (REQ-143~144). 등록·해제는 여러 번 해도 결과가 같다 */
+/** 워크스페이스·폴더 즐겨찾기 (REQ-151~153). 등록·해제는 여러 번 해도 결과가 같다 */
 @Service
 @RequiredArgsConstructor
 public class FavoriteService {
@@ -52,7 +52,7 @@ public class FavoriteService {
                 .ifPresent(favoriteRepository::delete);
     }
 
-    /** REQ-143. 등록한 순서대로. 지워졌거나 더는 들어갈 수 없는 대상은 뺀다 */
+    /** REQ-151. 등록한 순서대로. 지워졌거나 더는 들어갈 수 없는 대상은 뺀다 */
     @Transactional(readOnly = true)
     public List<FavoriteResponse> list(Long userId) {
         List<Favorite> favorites = favoriteRepository.findByUserIdOrderByCreatedAtAsc(userId);

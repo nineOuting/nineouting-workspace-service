@@ -2,8 +2,6 @@ package com.nineouting.backend.workspace.service;
 
 import com.nineouting.backend.common.client.UserClient;
 import com.nineouting.backend.common.client.UserSummary;
-import com.nineouting.backend.common.event.workspace.FolderDeleted;
-import com.nineouting.backend.common.outbox.OutboxEventWriter;
 import com.nineouting.backend.common.web.error.BusinessException;
 import com.nineouting.backend.common.web.error.CommonErrorCode;
 import com.nineouting.backend.workspace.domain.Folder;
@@ -37,7 +35,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 프로젝트 폴더·하위 폴더 (REQ-037~047, 058), 최근 프로젝트 (REQ-024).
+ * 프로젝트 폴더·하위 폴더 (REQ-037~047, 058), 최근 프로젝트 (REQ-024, 레거시).
  */
 @Service
 @RequiredArgsConstructor
@@ -57,7 +55,6 @@ public class FolderService {
     private final WorkspaceRepository workspaceRepository;
     private final FolderAccess folderAccess;
     private final UserClient userClient;
-    private final OutboxEventWriter outboxEventWriter;
     private final Clock clock;
 
     /** REQ-037. 들어갈 수 있는 폴더만, 기본 폴더가 맨 위. 하위 폴더에만 초대됐으면 상위 폴더는 이름만 보인다. */
@@ -95,7 +92,7 @@ public class FolderService {
         return node(folder, true, List.of());
     }
 
-    /** REQ-038. 열 때마다 최근 방문으로 기록한다 (REQ-024). */
+    /** REQ-038. 열 때마다 최근 방문으로 기록한다 (REQ-024, 레거시). */
     @Transactional
     public FolderDetailResponse open(Long folderId, Long userId) {
         Folder folder = folderAccess.requireAccess(folderId, userId);
@@ -127,7 +124,10 @@ public class FolderService {
         return node(folder, true, List.of());
     }
 
-    /** REQ-058. 소유자만, 하위 폴더까지 함께 지우고 안의 회의·회의록을 지우도록 이벤트를 보낸다. */
+    /**
+     * REQ-058. 소유자만. 바로 지우지 않고 쓰레기통으로 옮긴다 (REQ-143, 2026-10-28). 예전 하위 폴더도 함께.
+     * 안의 회의·회의록은 폴더 권한 확인에서 막혀 보이지 않고, 영구 삭제할 때 지운다 ({@link TrashService}).
+     */
     @Transactional
     public void delete(Long folderId, Long userId) {
         Folder folder = folderAccess.requireFolder(folderId);
@@ -137,13 +137,8 @@ public class FolderService {
         folderAccess.requireOwner(folderId, userId);
         List<Folder> targets = new ArrayList<>(folderRepository.findByParentId(folderId));
         targets.add(folder);
-        List<Long> folderIds = targets.stream().map(Folder::getId).toList();
-
-        folderMemberRepository.deleteByFolderIdIn(folderIds);
-        folderVisitRepository.deleteByFolderIdIn(folderIds);
-        folderRepository.deleteAll(targets);
-        outboxEventWriter.append(FolderDeleted.TOPIC, folder.getWorkspaceId().toString(), FolderDeleted.TYPE,
-                new FolderDeleted(folder.getWorkspaceId(), folderIds));
+        LocalDateTime now = now();
+        targets.forEach(target -> target.moveToTrash(now, userId));
     }
 
     /** REQ-041. 들어갈 수 있는 사람 전체. 상위 폴더 멤버라서 들어오는 사람은 inherited. */
@@ -161,7 +156,7 @@ public class FolderService {
             snapshot.invited().getOrDefault(folderId, List.of()).forEach(member -> direct.add(member.getUserId()));
         }
         Set<Long> all = snapshot.accessors(folder);
-        Map<Long, UserSummary> users = userClient.findUsers(all);
+        Map<Long, UserSummary> users = userClient.findUsers(all, folder.getWorkspaceId());
         return all.stream().map(memberId -> {
             UserSummary user = users.get(memberId);
             return new FolderMemberResponse(memberId, user == null ? null : user.name(),
@@ -223,7 +218,7 @@ public class FolderService {
         folder.transferOwner(targetUserId);
     }
 
-    /** REQ-024. 지금도 들어갈 수 있는 폴더만, 최근 방문 순. */
+    /** REQ-024 (레거시). 지금도 들어갈 수 있는 폴더만, 최근 방문 순. */
     @Transactional(readOnly = true)
     public List<RecentFolderResponse> recent(Long userId) {
         List<FolderVisit> visits = folderVisitRepository.findByUserIdOrderByVisitedAtDesc(userId, PageRequest.of(0, RECENT_VISIT_READ));

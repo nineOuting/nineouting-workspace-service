@@ -21,6 +21,7 @@ import com.nineouting.backend.workspace.dto.InviteInfoResponse;
 import com.nineouting.backend.workspace.dto.InviteLinkResponse;
 import com.nineouting.backend.workspace.dto.JoinRequestResponse;
 import com.nineouting.backend.workspace.dto.MemberResponse;
+import com.nineouting.backend.workspace.dto.WorkspaceResponse;
 import com.nineouting.backend.workspace.error.WorkspaceErrorCode;
 import com.nineouting.backend.workspace.repository.FolderMemberRepository;
 import com.nineouting.backend.workspace.repository.FolderRepository;
@@ -42,7 +43,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 초대 링크·참여 요청 (REQ-015~017, 034~035), 멤버 관리 (REQ-033, 036), 나가기 (REQ-032).
+ * 초대 링크·참여 요청 (REQ-015·034, 016~017·035 레거시), 멤버 관리 (REQ-033, 036), 나가기 (REQ-032).
  */
 @Service
 @RequiredArgsConstructor
@@ -93,7 +94,20 @@ public class MembershipService {
         return new InviteInfoResponse(workspace.getId(), workspace.getName(), status);
     }
 
-    /** REQ-016. 소유자에게 알림 이벤트를 보낸다. 거절된 뒤에는 다시 요청할 수 있다. */
+    /**
+     * REQ-015 초대 링크로 바로 참여 (2026-10-28 기획서에서 참여 요청·승인 REQ-016~017·035가 빠짐).
+     * 링크가 유효하면 승인 없이 멤버가 된다. 이미 멤버면 그대로 돌려준다.
+     */
+    @Transactional
+    public WorkspaceResponse joinByLink(String token, Long userId) {
+        Workspace workspace = workspaceOf(validLink(token));
+        WorkspaceMember member = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspace.getId(), userId)
+                .orElseGet(() -> workspaceMemberRepository.save(
+                        new WorkspaceMember(workspace.getId(), userId, WorkspaceRole.MEMBER, now())));
+        return new WorkspaceResponse(workspace.getId(), workspace.getName(), member.getRole(), false);
+    }
+
+    /** REQ-016 (레거시). 소유자에게 알림 이벤트를 보낸다. 거절된 뒤에는 다시 요청할 수 있다. */
     @Transactional
     public JoinRequestResponse requestJoin(String token, Long userId) {
         Workspace workspace = workspaceOf(validLink(token));
@@ -123,7 +137,7 @@ public class MembershipService {
         }).toList();
     }
 
-    /** REQ-035. 승인하면 멤버가 되고 요청자에게 알림 이벤트를 보낸다. */
+    /** REQ-035 (레거시). 승인하면 멤버가 되고 요청자에게 알림 이벤트를 보낸다. */
     @Transactional
     public void approve(Long workspaceId, Long joinRequestId, Long ownerUserId) {
         JoinRequest request = decidablePendingRequest(workspaceId, joinRequestId, ownerUserId);
@@ -136,7 +150,7 @@ public class MembershipService {
                 new MemberJoinApproved(workspaceId, workspace.getName(), request.getUserId()));
     }
 
-    /** REQ-017. 요청자는 초대 화면에서 REJECTED 상태를 보고 다시 요청할 수 있다. */
+    /** REQ-017 (레거시). 요청자는 초대 화면에서 REJECTED 상태를 보고 다시 요청할 수 있다. */
     @Transactional
     public void reject(Long workspaceId, Long joinRequestId, Long ownerUserId) {
         decidablePendingRequest(workspaceId, joinRequestId, ownerUserId)
@@ -148,7 +162,7 @@ public class MembershipService {
     public List<MemberResponse> members(Long workspaceId, Long userId) {
         folderAccess.requireMember(workspaceId, userId);
         List<WorkspaceMember> members = workspaceMemberRepository.findByWorkspaceIdOrderByJoinedAtAsc(workspaceId);
-        Map<Long, UserSummary> users = userClient.findUsers(members.stream().map(WorkspaceMember::getUserId).toList());
+        Map<Long, UserSummary> users = userClient.findUsers(members.stream().map(WorkspaceMember::getUserId).toList(), workspaceId);
         return members.stream().map(member -> {
             UserSummary user = users.get(member.getUserId());
             return new MemberResponse(member.getUserId(), user == null ? null : user.name(),

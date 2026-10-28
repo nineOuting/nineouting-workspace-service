@@ -89,7 +89,7 @@ public class WorkspaceController {
         return ApiResponse.ok(membershipService.issueInviteLink(workspaceId, user.userId()));
     }
 
-    /** REQ-035 */
+    /** REQ-035 (레거시) */
     @GetMapping("/{workspaceId}/join-requests")
     public ApiResponse<List<JoinRequestResponse>> joinRequests(@CurrentUser AuthenticatedUser user,
                                                                @PathVariable Long workspaceId) {

@@ -28,7 +28,8 @@ public enum WorkspaceErrorCode implements ErrorCode {
     NOT_FOLDER_MEMBER(HttpStatus.BAD_REQUEST, "폴더 멤버가 아닙니다"),
     FOLDER_OWNER_CANNOT_LEAVE(HttpStatus.BAD_REQUEST, "소유권을 양도해야 폴더에서 나갈 수 있습니다. 다른 폴더 멤버에게 소유권을 양도한 후 다시 시도해 주세요"),
     DEFAULT_FOLDER_UNLEAVABLE(HttpStatus.BAD_REQUEST, "기본 폴더에서는 나갈 수 없습니다"),
-    ALREADY_FOLDER_MEMBER(HttpStatus.CONFLICT, "이미 폴더 멤버입니다");
+    ALREADY_FOLDER_MEMBER(HttpStatus.CONFLICT, "이미 폴더 멤버입니다"),
+    TRASH_FORBIDDEN(HttpStatus.FORBIDDEN, "지운 사람이나 워크스페이스 소유자만 할 수 있습니다");
 
     private final HttpStatus status;
     private final String message;

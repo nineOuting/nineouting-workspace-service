@@ -5,6 +5,7 @@ import com.nineouting.backend.common.outbox.OutboxEventWriter;
 import com.nineouting.backend.common.web.error.BusinessException;
 import com.nineouting.backend.common.web.error.CommonErrorCode;
 import com.nineouting.backend.workspace.domain.Folder;
+import com.nineouting.backend.workspace.domain.FolderRecord;
 import com.nineouting.backend.workspace.domain.LastWorkspace;
 import com.nineouting.backend.workspace.domain.Workspace;
 import com.nineouting.backend.workspace.domain.WorkspaceMember;
@@ -13,6 +14,7 @@ import com.nineouting.backend.workspace.dto.WorkspaceDetailResponse;
 import com.nineouting.backend.workspace.dto.WorkspaceResponse;
 import com.nineouting.backend.workspace.repository.EmailInvitationRepository;
 import com.nineouting.backend.workspace.repository.FolderMemberRepository;
+import com.nineouting.backend.workspace.repository.FolderRecordRepository;
 import com.nineouting.backend.workspace.repository.FolderRepository;
 import com.nineouting.backend.workspace.repository.FolderVisitRepository;
 import com.nineouting.backend.workspace.repository.InviteLinkRepository;
@@ -41,6 +43,7 @@ public class WorkspaceService {
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final FolderRepository folderRepository;
+    private final FolderRecordRepository folderRecordRepository;
     private final LastWorkspaceRepository lastWorkspaceRepository;
     private final FolderMemberRepository folderMemberRepository;
     private final FolderVisitRepository folderVisitRepository;
@@ -111,12 +114,12 @@ public class WorkspaceService {
     @Transactional
     public void delete(Long workspaceId, Long userId) {
         folderAccess.requireWorkspaceOwner(workspaceId, userId);
-        List<Folder> folders = folderRepository.findByWorkspaceId(workspaceId);
-        List<Long> folderIds = folders.stream().map(Folder::getId).toList();
+        // 쓰레기통 폴더(REQ-143)까지 함께 지운다
+        List<Long> folderIds = folderRecordRepository.findByWorkspaceId(workspaceId).stream().map(FolderRecord::getId).sorted().toList();
 
         folderMemberRepository.deleteByFolderIdIn(folderIds);
         folderVisitRepository.deleteByFolderIdIn(folderIds);
-        folderRepository.deleteAll(folders);
+        folderRecordRepository.deleteAllInWorkspace(workspaceId);
         workspaceMemberRepository.deleteByWorkspaceId(workspaceId);
         inviteLinkRepository.deleteByWorkspaceId(workspaceId);
         joinRequestRepository.deleteByWorkspaceId(workspaceId);
