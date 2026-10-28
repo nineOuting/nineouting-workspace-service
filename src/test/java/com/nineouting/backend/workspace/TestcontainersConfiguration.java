@@ -1,5 +1,9 @@
 package com.nineouting.backend.workspace;
 
+import com.nineouting.backend.common.event.workspace.FolderDeleted;
+import com.nineouting.backend.common.event.workspace.MemberInvitedByEmail;
+import com.nineouting.backend.common.event.workspace.MemberJoinApproved;
+import com.nineouting.backend.common.event.workspace.MemberJoinRequested;
 import com.nineouting.backend.common.security.jwt.JwksKeyLocator;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Jwks;
@@ -15,12 +19,18 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
-import org.testcontainers.kafka.KafkaContainer;
+import org.springframework.test.context.DynamicPropertyRegistrar;
+import org.testcontainers.localstack.LocalStackContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.sns.SnsClient;
+import software.amazon.awssdk.services.sqs.SqsClient;
 
 /**
- * 테스트용 PostgreSQL·Kafka, user-service 대신 토큰을 서명할 키, 시간을 움직일 수 있는 시계.
+ * 테스트용 PostgreSQL·LocalStack(SNS·SQS), user-service 대신 토큰을 서명할 키, 시간을 움직일 수 있는 시계.
  */
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfiguration {
@@ -35,9 +45,42 @@ public class TestcontainersConfiguration {
     }
 
     @Bean
-    @ServiceConnection
-    KafkaContainer kafkaContainer() {
-        return new KafkaContainer(DockerImageName.parse("apache/kafka:3.9.1"));
+    LocalStackContainer localStackContainer() {
+        return new LocalStackContainer(DockerImageName.parse("localstack/localstack:4.4")).withServices("sns", "sqs");
+    }
+
+    @Bean
+    SnsClient snsClient(LocalStackContainer localStack) {
+        return SnsClient.builder().endpointOverride(localStack.getEndpoint()).region(Region.of(localStack.getRegion()))
+                .credentialsProvider(credentials(localStack)).build();
+    }
+
+    @Bean
+    SqsClient sqsClient(LocalStackContainer localStack) {
+        return SqsClient.builder().endpointOverride(localStack.getEndpoint()).region(Region.of(localStack.getRegion()))
+                .credentialsProvider(credentials(localStack)).build();
+    }
+
+    @Bean
+    LocalMessaging localMessaging(SnsClient snsClient, SqsClient sqsClient) {
+        return new LocalMessaging(snsClient, sqsClient);
+    }
+
+    /** 보내는 토픽을 만들어 outbox에 토픽 ARN 앞부분을 알려 준다 (운영은 Terraform) */
+    @Bean
+    DynamicPropertyRegistrar messagingProperties(LocalMessaging messaging) {
+        return registry -> {
+            messaging.topicArn(MemberJoinRequested.TOPIC);
+            messaging.topicArn(MemberJoinApproved.TOPIC);
+            messaging.topicArn(MemberInvitedByEmail.TOPIC);
+            messaging.topicArn(FolderDeleted.TOPIC);
+            String topicPrefix = messaging.topicArnPrefix(MemberJoinRequested.TOPIC);
+            registry.add("nineouting.outbox.topic-prefix", () -> topicPrefix);
+        };
+    }
+
+    private static StaticCredentialsProvider credentials(LocalStackContainer localStack) {
+        return StaticCredentialsProvider.create(AwsBasicCredentials.create(localStack.getAccessKey(), localStack.getSecretKey()));
     }
 
     /** security-common이 user-service JWKS 대신 테스트 공개키로 검증하게 한다. */
