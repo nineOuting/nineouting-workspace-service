@@ -1,0 +1,148 @@
+
+name: Workspace Sandbox ECR Publish
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - '.github/workflows/sandbox-ecr-publish.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Push Workspace Image to ECR
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
+
+    env:
+      AWS_REGION: ap-northeast-2
+      AWS_ACCOUNT: '904140717603'
+      ECR_REPOSITORY: nineouting-sandbox-workspace
+      SOURCE_IMAGE: ghcr.io/nineouting/nineouting-workspace-service@sha256:697c119441031b70673687b1338ae439d17f9c1e08b598a306f092f9fe411a37
+
+    steps:
+      - name: Inspect OIDC subject
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os
+          import json
+          import base64
+          import urllib.request
+
+          url = os.environ["ACTIONS_ID_TOKEN_REQUEST_URL"]
+          url += ("&" if "?" in url else "?") + "audience=sts.amazonaws.com"
+
+          request = urllib.request.Request(
+              url,
+              headers={
+                  "Authorization": "Bearer " +
+                  os.environ["ACTIONS_ID_TOKEN_REQUEST_TOKEN"]
+              }
+          )
+
+          with urllib.request.urlopen(request, timeout=20) as response:
+              token = json.load(response)["value"]
+
+          payload = token.split(".")[1]
+          payload += "=" * (-len(payload) % 4)
+          claims = json.loads(base64.urlsafe_b64decode(payload))
+
+          print("OIDC Subject:", claims.get("sub"))
+          print("OIDC Audience:", claims.get("aud"))
+
+          assert claims.get("aud") == "sts.amazonaws.com"
+          assert claims.get("repository") == (
+              "nineOuting/nineouting-workspace-service"
+          )
+          assert claims.get("ref") == "refs/heads/dev"
+          PY
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::904140717603:role/nineouting-sandbox-workspace-github
+          aws-region: ap-northeast-2
+
+      - name: Verify AWS account
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          account=$(aws sts get-caller-identity \
+            --query Account --output text)
+
+          test "$account" = "$AWS_ACCOUNT"
+          echo "AWS Account verified: $account"
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+        with:
+          registries: '904140717603'
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull existing AMD64 image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          docker pull --platform linux/amd64 "$SOURCE_IMAGE"
+
+          architecture=$(docker image inspect "$SOURCE_IMAGE" \
+            --format '{{.Os}}/{{.Architecture}}')
+
+          echo "Architecture: $architecture"
+          test "$architecture" = "linux/amd64"
+
+      - name: Push image to ECR
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          registry="$AWS_ACCOUNT.dkr.ecr.$AWS_REGION.amazonaws.com"
+          tag="eks-test-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          target="$registry/$ECR_REPOSITORY:$tag"
+
+          docker tag "$SOURCE_IMAGE" "$target"
+          docker push "$target" 2>&1 | tee push.log
+
+          digest=$(sed -nE \
+            's/.*digest: (sha256:[0-9a-f]{64}).*/\1/p' \
+            push.log | tail -n 1)
+
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+
+          {
+            echo "## Workspace ECR Push Success"
+            echo ""
+            echo "Image: $target"
+            echo "Digest: $digest"
+            echo "Architecture: linux/amd64"
+            echo "EKS Deployment: NOT RUN"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          {
+            echo "Image: $target"
+            echo "Digest URI: $registry/$ECR_REPOSITORY@$digest"
+            echo "Architecture: linux/amd64"
+          } > image-result.txt
+
+      - name: Save ECR image information
+        uses: actions/upload-artifact@v4
+        with:
+          name: workspace-ecr-image
+          path: image-result.txt
+          retention-days: 30
