@@ -26,6 +26,23 @@ class MembershipFlowTest extends ApiTestSupport {
     }
 
     @Test
+    void 소유자만_워크스페이스_이름을_바꾼다() throws Exception {
+        Long owner = newUser();
+        Long member = newUser();
+        Long workspaceId = createWorkspace(owner);
+        join(workspaceId, owner, member);
+        String path = "/api/workspaces/" + workspaceId;
+
+        call(member, patchRequest(path), "{\"name\":\"멤버가 바꾼 이름\"}").andExpect(status().isForbidden());
+        call(owner, patchRequest(path), "{\"name\":\"  \"}").andExpect(status().isBadRequest());
+        call(owner, patchRequest(path), "{\"name\":\"" + "가".repeat(51) + "\"}").andExpect(status().isBadRequest());
+        call(owner, patchRequest(path), "{\"name\":\"  새 이름  \"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value("새 이름"));
+        call(member, getRequest(path), null).andExpect(jsonPath("$.data.name").value("새 이름"));
+    }
+
+    @Test
     void 이메일로_초대받은_계정은_승인_없이_바로_들어오고_다른_계정은_수락할_수_없다() throws Exception {
         Long owner = newUser();
         Long member = newUser();

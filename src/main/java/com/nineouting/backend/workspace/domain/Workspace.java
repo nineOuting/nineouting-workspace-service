@@ -27,4 +27,9 @@ public class Workspace extends BaseTimeEntity {
     public Workspace(String name) {
         this.name = name;
     }
+
+    /** REQ-162 */
+    public void rename(String name) {
+        this.name = name;
+    }
 }
