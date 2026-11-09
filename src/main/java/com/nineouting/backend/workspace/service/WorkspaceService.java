@@ -34,7 +34,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 워크스페이스 생성·목록·전환·이름 변경 (REQ-028~031, 044, 162).
+ * 워크스페이스 생성·목록·전환·이름 변경 (REQ-028~031, 044, 163).
  */
 @Service
 @RequiredArgsConstructor
@@ -91,7 +91,7 @@ public class WorkspaceService {
                 workspaceMemberRepository.countByWorkspaceId(workspaceId));
     }
 
-    /** REQ-162. 소유자만. 다른 서비스는 이름을 저장하지 않고 그때그때 조회하므로 알릴 이벤트가 없다 */
+    /** REQ-163. 소유자만. 다른 서비스는 이름을 저장하지 않고 그때그때 조회하므로 알릴 이벤트가 없다 */
     @Transactional
     public WorkspaceDetailResponse rename(Long workspaceId, Long userId, String name) {
         WorkspaceMember member = folderAccess.requireWorkspaceOwner(workspaceId, userId);

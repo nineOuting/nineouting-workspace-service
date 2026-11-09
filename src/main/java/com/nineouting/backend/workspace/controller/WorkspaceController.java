@@ -68,7 +68,7 @@ public class WorkspaceController {
         return ApiResponse.ok(workspaceService.get(workspaceId, user.userId()));
     }
 
-    /** REQ-162. 소유자만 */
+    /** REQ-163. 소유자만 */
     @PatchMapping("/{workspaceId}")
     public ApiResponse<WorkspaceDetailResponse> rename(@CurrentUser AuthenticatedUser user, @PathVariable Long workspaceId,
                                                        @Valid @RequestBody RenameWorkspaceRequest request) {
