@@ -10,6 +10,7 @@ import com.nineouting.backend.workspace.dto.FolderAccessRequest;
 import com.nineouting.backend.workspace.dto.InviteLinkResponse;
 import com.nineouting.backend.workspace.dto.JoinRequestResponse;
 import com.nineouting.backend.workspace.dto.MemberResponse;
+import com.nineouting.backend.workspace.dto.UpdateWorkspaceRequest;
 import com.nineouting.backend.workspace.dto.UserIdRequest;
 import com.nineouting.backend.workspace.dto.WorkspaceDetailResponse;
 import com.nineouting.backend.workspace.dto.WorkspaceResponse;
@@ -23,6 +24,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -64,6 +66,13 @@ public class WorkspaceController {
     @GetMapping("/{workspaceId}")
     public ApiResponse<WorkspaceDetailResponse> get(@CurrentUser AuthenticatedUser user, @PathVariable Long workspaceId) {
         return ApiResponse.ok(workspaceService.get(workspaceId, user.userId()));
+    }
+
+    /** REQ-163 이름, 설명 수정. 소유자만 */
+    @PatchMapping("/{workspaceId}")
+    public ApiResponse<WorkspaceDetailResponse> update(@CurrentUser AuthenticatedUser user, @PathVariable Long workspaceId,
+                                                       @Valid @RequestBody UpdateWorkspaceRequest request) {
+        return ApiResponse.ok(workspaceService.update(workspaceId, user.userId(), request.name(), request.description()));
     }
 
     /** REQ-030 */
