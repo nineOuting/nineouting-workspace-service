@@ -10,6 +10,7 @@ import com.nineouting.backend.workspace.dto.FolderAccessRequest;
 import com.nineouting.backend.workspace.dto.InviteLinkResponse;
 import com.nineouting.backend.workspace.dto.JoinRequestResponse;
 import com.nineouting.backend.workspace.dto.MemberResponse;
+import com.nineouting.backend.workspace.dto.PendingInvitationResponse;
 import com.nineouting.backend.workspace.dto.UpdateWorkspaceRequest;
 import com.nineouting.backend.workspace.dto.UserIdRequest;
 import com.nineouting.backend.workspace.dto.WorkspaceDetailResponse;
@@ -90,6 +91,29 @@ public class WorkspaceController {
                                                                               @Valid @RequestBody EmailInviteRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(emailInvitationService.invite(workspaceId, user.userId(), request.email())));
+    }
+
+    /** REQ-164 초대 대기 목록. 소유자만 */
+    @GetMapping("/{workspaceId}/invitations")
+    public ApiResponse<List<PendingInvitationResponse>> pendingInvitations(@CurrentUser AuthenticatedUser user,
+                                                                           @PathVariable Long workspaceId) {
+        return ApiResponse.ok(emailInvitationService.pending(workspaceId, user.userId()));
+    }
+
+    /** REQ-164 [다시 보내기] */
+    @PostMapping("/{workspaceId}/invitations/{invitationId}/resend")
+    public ApiResponse<EmailInvitationResponse> resendInvitation(@CurrentUser AuthenticatedUser user,
+                                                                 @PathVariable Long workspaceId,
+                                                                 @PathVariable Long invitationId) {
+        return ApiResponse.ok(emailInvitationService.resend(workspaceId, user.userId(), invitationId));
+    }
+
+    /** REQ-164 [취소] */
+    @DeleteMapping("/{workspaceId}/invitations/{invitationId}")
+    public ApiResponse<Void> cancelInvitation(@CurrentUser AuthenticatedUser user, @PathVariable Long workspaceId,
+                                              @PathVariable Long invitationId) {
+        emailInvitationService.cancel(workspaceId, user.userId(), invitationId);
+        return ApiResponse.ok();
     }
 
     @PostMapping("/{workspaceId}/invite-link")

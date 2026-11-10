@@ -13,6 +13,7 @@ import com.nineouting.backend.workspace.domain.WorkspaceMember;
 import com.nineouting.backend.workspace.domain.WorkspaceRole;
 import com.nineouting.backend.workspace.dto.EmailInvitationInfoResponse;
 import com.nineouting.backend.workspace.dto.EmailInvitationResponse;
+import com.nineouting.backend.workspace.dto.PendingInvitationResponse;
 import com.nineouting.backend.workspace.dto.WorkspaceResponse;
 import com.nineouting.backend.workspace.error.WorkspaceErrorCode;
 import com.nineouting.backend.workspace.repository.EmailInvitationRepository;
@@ -22,6 +23,7 @@ import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -66,12 +68,42 @@ public class EmailInvitationService {
         return new EmailInvitationResponse(invitation.getId(), normalized, invitation.getExpiresAt());
     }
 
+    /** REQ-164 초대 대기 목록. 소유자만 */
+    @Transactional(readOnly = true)
+    public List<PendingInvitationResponse> pending(Long workspaceId, Long ownerUserId) {
+        folderAccess.requireWorkspaceOwner(workspaceId, ownerUserId);
+        LocalDateTime now = now();
+        return invitationRepository.findByWorkspaceIdAndAcceptedAtIsNullOrderByCreatedAtDesc(workspaceId).stream()
+                .map(invitation -> new PendingInvitationResponse(invitation.getId(), invitation.getEmail(),
+                        invitation.getCreatedAt(), invitation.getExpiresAt(), !invitation.isUsable(now)))
+                .toList();
+    }
+
+    /** REQ-164 [다시 보내기]: 같은 이메일로 새 초대를 보낸다 (이전 링크는 못 쓴다) */
+    @Transactional
+    public EmailInvitationResponse resend(Long workspaceId, Long ownerUserId, Long invitationId) {
+        folderAccess.requireWorkspaceOwner(workspaceId, ownerUserId);
+        return invite(workspaceId, ownerUserId, pendingOf(workspaceId, invitationId).getEmail());
+    }
+
+    /** REQ-164 [취소]: 메일 속 링크를 더는 쓸 수 없다 */
+    @Transactional
+    public void cancel(Long workspaceId, Long ownerUserId, Long invitationId) {
+        folderAccess.requireWorkspaceOwner(workspaceId, ownerUserId);
+        invitationRepository.delete(pendingOf(workspaceId, invitationId));
+    }
+
+    private EmailInvitation pendingOf(Long workspaceId, Long invitationId) {
+        return invitationRepository.findByIdAndWorkspaceIdAndAcceptedAtIsNull(invitationId, workspaceId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
+    }
+
     @Transactional(readOnly = true)
     public EmailInvitationInfoResponse info(String token, Long userId) {
         EmailInvitation invitation = usable(token);
         Workspace workspace = workspaceOf(invitation);
         return new EmailInvitationInfoResponse(workspace.getId(), workspace.getName(), invitation.getEmail(),
-                emailMatches(invitation, userId),
+                inviterName(invitation.getInvitedBy()), emailMatches(invitation, userId),
                 workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspace.getId(), userId));
     }
 
@@ -99,6 +131,12 @@ public class EmailInvitationService {
     private Workspace workspaceOf(EmailInvitation invitation) {
         return workspaceRepository.findById(invitation.getWorkspaceId())
                 .orElseThrow(() -> new BusinessException(WorkspaceErrorCode.INVITATION_INVALID));
+    }
+
+    /** MSG-059 "{초대한 사람} 님이 초대했어요". 찾지 못하면 null */
+    private String inviterName(Long userId) {
+        UserSummary inviter = userClient.findUsers(Set.of(userId)).get(userId);
+        return inviter == null ? null : inviter.name();
     }
 
     private boolean emailMatches(EmailInvitation invitation, Long userId) {

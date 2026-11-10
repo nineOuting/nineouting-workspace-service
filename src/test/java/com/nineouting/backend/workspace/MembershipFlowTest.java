@@ -89,6 +89,54 @@ class MembershipFlowTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.code").value("INVITATION_INVALID"));
     }
 
+    @Test
+    void 소유자는_초대_대기_목록을_보고_다시_보내거나_취소한다() throws Exception {
+        Long owner = newUser();
+        Long member = newUser();
+        Long invitee = newUser();
+        Long workspaceId = createWorkspace(owner);
+        join(workspaceId, owner, member);
+        String path = "/api/workspaces/" + workspaceId + "/invitations";
+        String email = "user" + invitee + "@example.com";
+        call(owner, post(path), "{\"email\":\"" + email + "\"}").andExpect(status().isCreated());
+        String firstToken = invitationToken(email);
+
+        call(member, getRequest(path), null).andExpect(status().isForbidden());
+        Long invitationId = id(call(owner, getRequest(path), null)
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].email").value(email))
+                .andExpect(jsonPath("$.data[0].expired").value(false)), "$.data[0].invitationId");
+        // 초대 메일 속 화면에 초대한 사람 이름이 보인다 (MSG-059)
+        call(invitee, getRequest("/api/workspaces/invitations/" + firstToken), null)
+                .andExpect(jsonPath("$.data.inviterName").value("user" + owner));
+
+        // 다시 보내면 이전 링크는 못 쓰고 새 초대 하나만 남는다
+        call(owner, post(path + "/" + invitationId + "/resend"), null).andExpect(status().isOk());
+        call(invitee, getRequest("/api/workspaces/invitations/" + firstToken), null)
+                .andExpect(jsonPath("$.code").value("INVITATION_INVALID"));
+        Long resentId = id(call(owner, getRequest(path), null)
+                .andExpect(jsonPath("$.data.length()").value(1)), "$.data[0].invitationId");
+        String secondToken = invitationToken(email);
+
+        call(member, deleteRequest(path + "/" + resentId), null).andExpect(status().isForbidden());
+        call(owner, deleteRequest(path + "/" + resentId), null).andExpect(status().isOk());
+        call(owner, getRequest(path), null).andExpect(jsonPath("$.data.length()").value(0));
+        call(invitee, getRequest("/api/workspaces/invitations/" + secondToken), null)
+                .andExpect(jsonPath("$.code").value("INVITATION_INVALID"));
+        call(owner, deleteRequest(path + "/" + resentId), null).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void 초대_링크_정보에_링크를_만든_사람_이름이_보인다() throws Exception {
+        Long owner = newUser();
+        Long visitor = newUser();
+        Long workspaceId = createWorkspace(owner);
+        String token = data(call(owner, post("/api/workspaces/" + workspaceId + "/invite-link"), null), "$.data.token");
+
+        call(visitor, getRequest("/api/invites/" + token), null)
+                .andExpect(jsonPath("$.data.inviterName").value("user" + owner));
+    }
+
     /** 초대 메일 이벤트에 담긴 토큰 (메일로만 가므로 응답에는 없다). 같은 이메일이면 가장 최근 것 */
     private String invitationToken(String email) {
         return outboxEventRepository.findAll().stream()

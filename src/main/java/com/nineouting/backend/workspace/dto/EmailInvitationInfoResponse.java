@@ -6,6 +6,6 @@ package com.nineouting.backend.workspace.dto;
  * @param emailMatches 로그인한 계정의 이메일이 초대받은 이메일과 같은지 (다르면 수락할 수 없다)
  * @param member       이미 워크스페이스 멤버인지
  */
-public record EmailInvitationInfoResponse(Long workspaceId, String workspaceName, String email, boolean emailMatches,
-                                          boolean member) {
+public record EmailInvitationInfoResponse(Long workspaceId, String workspaceName, String email, String inviterName,
+                                          boolean emailMatches, boolean member) {
 }
