@@ -82,7 +82,8 @@ public class MembershipService {
 
     @Transactional(readOnly = true)
     public InviteInfoResponse inviteInfo(String token, Long userId) {
-        Workspace workspace = workspaceOf(validLink(token));
+        InviteLink link = validLink(token);
+        Workspace workspace = workspaceOf(link);
         String status;
         if (workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspace.getId(), userId)) {
             status = STATUS_MEMBER;
@@ -91,7 +92,9 @@ public class MembershipService {
                     .map(request -> request.getStatus().name())
                     .orElse(STATUS_NONE);
         }
-        return new InviteInfoResponse(workspace.getId(), workspace.getName(), status);
+        UserSummary inviter = userClient.findUsers(List.of(link.getCreatedBy())).get(link.getCreatedBy());
+        return new InviteInfoResponse(workspace.getId(), workspace.getName(), inviter == null ? null : inviter.name(),
+                status);
     }
 
     /**
