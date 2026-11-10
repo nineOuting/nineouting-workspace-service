@@ -24,7 +24,17 @@ public class Workspace extends BaseTimeEntity {
     @Column(nullable = false, length = 50)
     private String name;
 
+    /** REQ-163 */
+    @Column(nullable = false, length = 100)
+    private String description = "";
+
     public Workspace(String name) {
         this.name = name;
+    }
+
+    /** REQ-163 */
+    public void update(String name, String description) {
+        this.name = name;
+        this.description = description;
     }
 }
