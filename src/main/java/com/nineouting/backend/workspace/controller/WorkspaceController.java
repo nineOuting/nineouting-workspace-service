@@ -10,7 +10,7 @@ import com.nineouting.backend.workspace.dto.FolderAccessRequest;
 import com.nineouting.backend.workspace.dto.InviteLinkResponse;
 import com.nineouting.backend.workspace.dto.JoinRequestResponse;
 import com.nineouting.backend.workspace.dto.MemberResponse;
-import com.nineouting.backend.workspace.dto.RenameWorkspaceRequest;
+import com.nineouting.backend.workspace.dto.UpdateWorkspaceRequest;
 import com.nineouting.backend.workspace.dto.UserIdRequest;
 import com.nineouting.backend.workspace.dto.WorkspaceDetailResponse;
 import com.nineouting.backend.workspace.dto.WorkspaceResponse;
@@ -68,11 +68,11 @@ public class WorkspaceController {
         return ApiResponse.ok(workspaceService.get(workspaceId, user.userId()));
     }
 
-    /** REQ-163. 소유자만 */
+    /** REQ-163 이름, 설명 수정. 소유자만 */
     @PatchMapping("/{workspaceId}")
-    public ApiResponse<WorkspaceDetailResponse> rename(@CurrentUser AuthenticatedUser user, @PathVariable Long workspaceId,
-                                                       @Valid @RequestBody RenameWorkspaceRequest request) {
-        return ApiResponse.ok(workspaceService.rename(workspaceId, user.userId(), request.name()));
+    public ApiResponse<WorkspaceDetailResponse> update(@CurrentUser AuthenticatedUser user, @PathVariable Long workspaceId,
+                                                       @Valid @RequestBody UpdateWorkspaceRequest request) {
+        return ApiResponse.ok(workspaceService.update(workspaceId, user.userId(), request.name(), request.description()));
     }
 
     /** REQ-030 */
