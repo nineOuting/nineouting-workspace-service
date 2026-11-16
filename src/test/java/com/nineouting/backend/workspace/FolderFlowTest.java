@@ -57,13 +57,17 @@ class FolderFlowTest extends ApiTestSupport {
     }
 
     @Test
-    void 초대받지_않으면_소유자도_폴더에_들어갈_수_없다() throws Exception {
+    void 워크스페이스_소유자는_초대받지_않아도_모든_폴더에_들어가고_나갈_수_없다() throws Exception {
         Long project = createFolder(workspaceId, owner, "기획", null);
 
         call(member, getRequest("/api/folders/" + project), null).andExpect(status().isForbidden());
-        call(workspaceOwner, getRequest("/api/folders/" + project), null).andExpect(status().isForbidden());
+        call(workspaceOwner, getRequest("/api/folders/" + project), null).andExpect(status().isOk());
         call(workspaceOwner, getRequest("/api/workspaces/" + workspaceId + "/folders"), null)
-                .andExpect(jsonPath("$.data.length()").value(1));
+                .andExpect(jsonPath("$.data.length()").value(2));
+        call(owner, getRequest("/api/folders/" + project + "/members"), null)
+                .andExpect(jsonPath("$.data[?(@.userId == " + workspaceOwner + ")].inherited").value(true));
+        call(workspaceOwner, deleteRequest("/api/folders/" + project + "/members/me"), null)
+                .andExpect(jsonPath("$.code").value("ALL_FOLDER_ACCESS_UNLEAVABLE"));
 
         inviteToFolder(project, workspaceOwner, member);
         call(member, getRequest("/api/folders/" + project), null).andExpect(status().isOk());
@@ -105,13 +109,16 @@ class FolderFlowTest extends ApiTestSupport {
 
 
     @Test
-    void 초대와_내보내기는_워크스페이스_소유자만_같은_워크스페이스_멤버에게만_할_수_있다() throws Exception {
+    void 초대와_내보내기는_폴더_소유자와_워크스페이스_소유자가_같은_워크스페이스_멤버에게만_할_수_있다() throws Exception {
         Long project = createFolder(workspaceId, owner, "기획", null);
+        Long other = newUser();
+        join(workspaceId, workspaceOwner, other);
 
-        // 폴더 소유자라도 워크스페이스 소유자가 아니면 초대·내보내기를 할 수 없다 (2026-10-26 결정)
-        call(owner, post("/api/folders/" + project + "/members"), "{\"userId\":%d}".formatted(member))
-                .andExpect(status().isForbidden());
-        call(member, post("/api/folders/" + project + "/members"), "{\"userId\":%d}".formatted(workspaceOwner))
+        // 2026-11-16 결정: 폴더 소유자도 초대·내보내기를 한다
+        inviteToFolder(project, owner, other);
+        call(owner, deleteRequest("/api/folders/" + project + "/members/" + other), null)
+                .andExpect(status().isOk());
+        call(member, post("/api/folders/" + project + "/members"), "{\"userId\":%d}".formatted(other))
                 .andExpect(status().isForbidden());
         call(workspaceOwner, post("/api/folders/" + project + "/members"), "{\"userId\":%d}".formatted(newUser()))
                 .andExpect(jsonPath("$.code").value("INVALID_INPUT"));
@@ -119,7 +126,7 @@ class FolderFlowTest extends ApiTestSupport {
         call(workspaceOwner, post("/api/folders/" + project + "/members"), "{\"userId\":%d}".formatted(member))
                 .andExpect(jsonPath("$.code").value("ALREADY_FOLDER_MEMBER"));
 
-        call(owner, deleteRequest("/api/folders/" + project + "/members/" + member), null)
+        call(other, deleteRequest("/api/folders/" + project + "/members/" + member), null)
                 .andExpect(status().isForbidden());
         call(workspaceOwner, deleteRequest("/api/folders/" + project + "/members/" + member), null)
                 .andExpect(status().isOk());
@@ -141,7 +148,7 @@ class FolderFlowTest extends ApiTestSupport {
         call(workspaceOwner, putRequest("/api/workspaces/" + workspaceId + "/members/" + member + "/folder-access"),
                 "{\"folderAccess\":\"ALL\"}");
         call(member, deleteRequest("/api/folders/" + project + "/members/me"), null)
-                .andExpect(jsonPath("$.code").value("NOT_FOLDER_MEMBER"));
+                .andExpect(jsonPath("$.code").value("ALL_FOLDER_ACCESS_UNLEAVABLE"));
     }
 
     @Test
@@ -190,6 +197,15 @@ class FolderFlowTest extends ApiTestSupport {
         call(member, getRequest("/api/folders/" + project), null).andExpect(status().isOk());
         call(owner, getRequest("/api/workspaces/" + workspaceId + "/trash"), null)
                 .andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test
+    void 워크스페이스_소유자는_남이_만든_폴더도_지운다() throws Exception {
+        // 2026-11-16 결정
+        Long project = createFolder(workspaceId, owner, "기획", null);
+
+        call(workspaceOwner, deleteRequest("/api/folders/" + project), null).andExpect(status().isOk());
+        call(owner, getRequest("/api/folders/" + project), null).andExpect(status().isNotFound());
     }
 
     @Test
@@ -255,9 +271,10 @@ class FolderFlowTest extends ApiTestSupport {
         mockMvc.perform(getRequest("/internal/folders/" + project + "/access").param("userId", member.toString()))
                 .andExpect(jsonPath("$.data.allowed").value(true));
         mockMvc.perform(getRequest("/internal/folders/" + project + "/access").param("userId", workspaceOwner.toString()))
-                .andExpect(jsonPath("$.data.allowed").value(false));
+                .andExpect(jsonPath("$.data.allowed").value(true));
         mockMvc.perform(getRequest("/internal/folders/" + project + "/members"))
-                .andExpect(jsonPath("$.data", containsInAnyOrder(owner.intValue(), member.intValue())));
+                .andExpect(jsonPath("$.data", containsInAnyOrder(owner.intValue(), member.intValue(),
+                        workspaceOwner.intValue())));
         mockMvc.perform(getRequest("/internal/users/" + member + "/folders"))
                 .andExpect(jsonPath("$.data.length()").value(2))
                 .andExpect(jsonPath("$.data[0].workspaceName").value("팀 워크스페이스"));
