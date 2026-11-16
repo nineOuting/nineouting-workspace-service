@@ -22,8 +22,9 @@ import org.springframework.stereotype.Component;
  * 워크스페이스·폴더 접근 규칙 (docs/requirements.md "권한", docs/services/workspace-service.md 3장).
  * <ul>
  *   <li>기본 폴더: 워크스페이스 멤버 누구나</li>
- *   <li>그 외 폴더: 만든 사람(소유자) + 초대된 멤버 + (하위 폴더면) 상위 폴더에 들어갈 수 있는 사람</li>
- *   <li>소유자라도 초대받지 않은 폴더에는 들어갈 수 없다</li>
+ *   <li>그 외 폴더: 만든 사람(소유자) + 초대된 멤버 + "모든 폴더" 권한 멤버 + 워크스페이스 소유자
+ *       + (하위 폴더면) 상위 폴더에 들어갈 수 있는 사람</li>
+ *   <li>워크스페이스 소유자는 초대받지 않아도 모든 폴더에 들어간다 (2026-11-16 결정)</li>
  * </ul>
  */
 @Component
@@ -71,6 +72,16 @@ public class FolderAccess {
         return folder;
     }
 
+    /** 폴더 소유자나 워크스페이스 소유자만. 폴더 삭제, 폴더 멤버 초대, 내보내기 (2026-11-16 결정). */
+    public Folder requireOwnerOrWorkspaceOwner(Long folderId, Long userId) {
+        Folder folder = requireFolder(folderId);
+        WorkspaceMember member = requireMember(folder.getWorkspaceId(), userId);
+        if (!folder.isOwnedBy(userId) && !member.isOwner()) {
+            throw new BusinessException(CommonErrorCode.FORBIDDEN);
+        }
+        return folder;
+    }
+
     public boolean canAccess(Folder folder, Long userId) {
         if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(folder.getWorkspaceId(), userId)) {
             return false;
@@ -90,13 +101,13 @@ public class FolderAccess {
                 .map(WorkspaceMember::getUserId)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         Set<Long> allFolderMembers = members.stream()
-                .filter(WorkspaceMember::canAccessAllFolders)
+                .filter(member -> member.isOwner() || member.canAccessAllFolders())
                 .map(WorkspaceMember::getUserId)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         return new Snapshot(folders, byId, invited, workspaceMembers, allFolderMembers);
     }
 
-    /** @param allFolderMembers 폴더 접근 권한이 "모든 폴더"인 멤버 (REQ-128) */
+    /** @param allFolderMembers 폴더 접근 권한이 "모든 폴더"인 멤버 (REQ-128)와 워크스페이스 소유자 */
     public record Snapshot(List<Folder> folders, Map<Long, Folder> byId, Map<Long, List<FolderMember>> invited,
                            Set<Long> workspaceMembers, Set<Long> allFolderMembers) {
 

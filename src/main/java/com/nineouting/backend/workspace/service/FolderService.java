@@ -110,14 +110,16 @@ public class FolderService {
                 folder.isDefaultFolder(), folder.getOwnerUserId(), folder.isOwnedBy(userId), path);
     }
 
-    /** 소유자만. 기본 폴더는 소유자가 없어 소유자가 바꾼다 (REQ-044). */
+    /**
+     * 폴더 소유자나 워크스페이스 소유자 (2026-11-16 결정). 기본 폴더는 소유자가 없어 워크스페이스 소유자가 바꾼다 (REQ-044).
+     */
     @Transactional
     public FolderNode rename(Long folderId, Long userId, String name) {
         Folder folder = folderAccess.requireFolder(folderId);
         if (folder.isDefaultFolder()) {
             folderAccess.requireWorkspaceOwner(folder.getWorkspaceId(), userId);
         } else {
-            folderAccess.requireOwner(folderId, userId);
+            folderAccess.requireOwnerOrWorkspaceOwner(folderId, userId);
         }
         folder.rename(name);
         saveWithUniqueName(folder);
@@ -125,7 +127,7 @@ public class FolderService {
     }
 
     /**
-     * REQ-058. 소유자만. 바로 지우지 않고 쓰레기통으로 옮긴다 (REQ-143, 2026-10-28). 예전 하위 폴더도 함께.
+     * REQ-058. 폴더 소유자나 워크스페이스 소유자 (2026-11-16 결정). 바로 지우지 않고 쓰레기통으로 옮긴다 (REQ-143, 2026-10-28). 예전 하위 폴더도 함께.
      * 안의 회의·회의록은 폴더 권한 확인에서 막혀 보이지 않고, 영구 삭제할 때 지운다 ({@link TrashService}).
      */
     @Transactional
@@ -134,7 +136,7 @@ public class FolderService {
         if (folder.isDefaultFolder()) {
             throw new BusinessException(WorkspaceErrorCode.DEFAULT_FOLDER_UNDELETABLE);
         }
-        folderAccess.requireOwner(folderId, userId);
+        folderAccess.requireOwnerOrWorkspaceOwner(folderId, userId);
         List<Folder> targets = new ArrayList<>(folderRepository.findByParentId(folderId));
         targets.add(folder);
         LocalDateTime now = now();
@@ -165,11 +167,10 @@ public class FolderService {
         }).toList();
     }
 
-    /** REQ-041. 워크스페이스 소유자만 (2026-10-26 결정), 같은 워크스페이스 멤버만 초대할 수 있다. */
+    /** REQ-041. 폴더 소유자나 워크스페이스 소유자 (2026-11-16 결정), 같은 워크스페이스 멤버만 초대할 수 있다. */
     @Transactional
     public void invite(Long folderId, Long ownerUserId, Long targetUserId) {
-        Folder folder = folderAccess.requireFolder(folderId);
-        folderAccess.requireWorkspaceOwner(folder.getWorkspaceId(), ownerUserId);
+        Folder folder = folderAccess.requireOwnerOrWorkspaceOwner(folderId, ownerUserId);
         if (!folderAccess.snapshot(folder.getWorkspaceId()).workspaceMembers().contains(targetUserId)) {
             throw new BusinessException(CommonErrorCode.INVALID_INPUT, "같은 워크스페이스 멤버만 초대할 수 있습니다");
         }
@@ -179,11 +180,13 @@ public class FolderService {
         folderMemberRepository.save(new FolderMember(folderId, targetUserId, now()));
     }
 
-    /** REQ-042. 워크스페이스 소유자만 (2026-10-26 결정). "모든 폴더" 권한으로 들어오는 사람은 여기서 내보낼 수 없다. */
+    /**
+     * REQ-042. 폴더 소유자나 워크스페이스 소유자 (2026-11-16 결정).
+     * "모든 폴더" 권한이나 워크스페이스 소유자라서 들어오는 사람은 여기서 내보낼 수 없다.
+     */
     @Transactional
     public void removeMember(Long folderId, Long ownerUserId, Long targetUserId) {
-        Folder folder = folderAccess.requireFolder(folderId);
-        folderAccess.requireWorkspaceOwner(folder.getWorkspaceId(), ownerUserId);
+        folderAccess.requireOwnerOrWorkspaceOwner(folderId, ownerUserId);
         FolderMember member = folderMemberRepository.findByFolderIdAndUserId(folderId, targetUserId)
                 .orElseThrow(() -> new BusinessException(WorkspaceErrorCode.NOT_FOLDER_MEMBER));
         folderMemberRepository.delete(member);
@@ -191,13 +194,16 @@ public class FolderService {
 
     /**
      * REQ-139. 초대받아 들어온 폴더에서 나간다. 폴더 소유자는 먼저 양도해야 한다 (REQ-043, MSG-045).
-     * 기본 폴더와, 폴더 접근 권한이 "모든 폴더"라서 들어오는 폴더는 나갈 수 없다.
+     * 기본 폴더와, 워크스페이스 소유자이거나 폴더 접근 권한이 "모든 폴더"라서 들어오는 폴더는 나갈 수 없다.
      */
     @Transactional
     public void leave(Long folderId, Long userId) {
         Folder folder = folderAccess.requireAccess(folderId, userId);
         if (folder.isDefaultFolder()) {
             throw new BusinessException(WorkspaceErrorCode.DEFAULT_FOLDER_UNLEAVABLE);
+        }
+        if (folderAccess.snapshot(folder.getWorkspaceId()).allFolderMembers().contains(userId)) {
+            throw new BusinessException(WorkspaceErrorCode.ALL_FOLDER_ACCESS_UNLEAVABLE);
         }
         if (folder.isOwnedBy(userId)) {
             throw new BusinessException(WorkspaceErrorCode.FOLDER_OWNER_CANNOT_LEAVE);
