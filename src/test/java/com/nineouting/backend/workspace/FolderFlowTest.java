@@ -200,9 +200,13 @@ class FolderFlowTest extends ApiTestSupport {
     }
 
     @Test
-    void 워크스페이스_소유자는_남이_만든_폴더도_지운다() throws Exception {
+    void 워크스페이스_소유자는_남이_만든_폴더도_이름을_바꾸고_지운다() throws Exception {
         // 2026-11-16 결정
         Long project = createFolder(workspaceId, owner, "기획", null);
+
+        call(member, patchRequest("/api/folders/" + project), "{\"name\":\"멤버\"}").andExpect(status().isForbidden());
+        call(workspaceOwner, patchRequest("/api/folders/" + project), "{\"name\":\"기획 1\"}")
+                .andExpect(jsonPath("$.data.name").value("기획 1"));
 
         call(workspaceOwner, deleteRequest("/api/folders/" + project), null).andExpect(status().isOk());
         call(owner, getRequest("/api/folders/" + project), null).andExpect(status().isNotFound());
