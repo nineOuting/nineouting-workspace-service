@@ -14,7 +14,9 @@ import com.nineouting.backend.workspace.domain.FolderMember;
 import com.nineouting.backend.workspace.domain.InviteLink;
 import com.nineouting.backend.workspace.domain.JoinRequest;
 import com.nineouting.backend.workspace.domain.JoinRequestStatus;
+import com.nineouting.backend.workspace.domain.FolderRecord;
 import com.nineouting.backend.workspace.domain.Workspace;
+import com.nineouting.backend.workspace.repository.FolderRecordRepository;
 import com.nineouting.backend.workspace.domain.WorkspaceMember;
 import com.nineouting.backend.workspace.domain.WorkspaceRole;
 import com.nineouting.backend.workspace.dto.InviteInfoResponse;
@@ -54,6 +56,7 @@ public class MembershipService {
     private static final String STATUS_NONE = "NONE";
 
     private final WorkspaceRepository workspaceRepository;
+    private final FolderRecordRepository folderRecordRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final InviteLinkRepository inviteLinkRepository;
     private final JoinRequestRepository joinRequestRepository;
@@ -193,6 +196,7 @@ public class MembershipService {
         WorkspaceMember target = workspaceMemberRepository.findByWorkspaceIdAndUserId(workspaceId, targetUserId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
         transferOwnedFolders(workspaceId, targetUserId, ownerUserId);
+        transferTrashedFolders(workspaceId, targetUserId, ownerUserId);
         leaveWorkspace(target);
     }
 
@@ -209,7 +213,7 @@ public class MembershipService {
         target.changeRole(WorkspaceRole.OWNER);
     }
 
-    /** REQ-032. 소유자는 양도한 뒤에, 폴더 소유자는 폴더를 양도한 뒤에 나갈 수 있다. */
+    /** REQ-032. 소유자는 양도한 뒤에, 폴더 소유자는 폴더를 양도한 뒤에 나갈 수 있다 (쓰레기통 폴더는 자동으로 넘긴다). */
     @Transactional
     public void leave(Long workspaceId, Long userId) {
         WorkspaceMember member = folderAccess.requireMember(workspaceId, userId);
@@ -219,7 +223,23 @@ public class MembershipService {
         if (!folderRepository.findByWorkspaceIdAndOwnerUserId(workspaceId, userId).isEmpty()) {
             throw new BusinessException(WorkspaceErrorCode.FOLDER_OWNERSHIP_REMAINING);
         }
+        transferTrashedFolders(workspaceId, userId, ownerOf(workspaceId).getUserId());
         leaveWorkspace(member);
+    }
+
+    /**
+     * 떠나는 사람이 가진 쓰레기통 폴더도 넘긴다. 그러지 않으면 복구했을 때 워크스페이스에 없는 사람이 소유자로 남는다 (2026-11-17).
+     * 넘길 사람은 살아 있는 폴더와 같다: 가장 먼저 초대된 폴더 멤버, 없으면 워크스페이스 소유자
+     */
+    private void transferTrashedFolders(Long workspaceId, Long leavingUserId, Long ownerUserId) {
+        for (Long folderId : folderRecordRepository.findTrashedIdsOwnedBy(workspaceId, leavingUserId)) {
+            Optional<FolderMember> next = folderMemberRepository.findByFolderIdOrderByInvitedAtAscIdAsc(folderId).stream()
+                    .filter(member -> !member.getUserId().equals(leavingUserId))
+                    .findFirst();
+            Long newOwner = next.map(FolderMember::getUserId).orElse(ownerUserId);
+            folderMemberRepository.findByFolderIdAndUserId(folderId, newOwner).ifPresent(folderMemberRepository::delete);
+            folderRecordRepository.changeOwner(folderId, newOwner);
+        }
     }
 
     /**
@@ -240,7 +260,8 @@ public class MembershipService {
     private void leaveWorkspace(WorkspaceMember member) {
         Long workspaceId = member.getWorkspaceId();
         Long userId = member.getUserId();
-        List<Long> folderIds = folderRepository.findByWorkspaceId(workspaceId).stream().map(Folder::getId).toList();
+        // 쓰레기통 폴더의 멤버 기록도 지운다 (복구했을 때 떠난 사람이 멤버로 남지 않게, 2026-11-17)
+        List<Long> folderIds = folderRecordRepository.findByWorkspaceId(workspaceId).stream().map(FolderRecord::getId).toList();
         if (!folderIds.isEmpty()) {
             folderMemberRepository.deleteByFolderIdInAndUserId(folderIds, userId);
             folderVisitRepository.deleteByFolderIdInAndUserId(folderIds, userId);

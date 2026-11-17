@@ -207,12 +207,13 @@ class FolderFlowTest extends ApiTestSupport {
     }
 
     @Test
-    void 워크스페이스_소유자는_남이_만든_폴더도_이름을_바꾸고_지운다() throws Exception {
-        // 2026-11-16 결정
+    void 이름은_폴더_소유자만_바꾸고_워크스페이스_소유자는_남이_만든_폴더도_지운다() throws Exception {
+        // 2026-11-17 시트(REQ-165): 이름 바꾸기는 프로젝트 소유자만, 삭제는 워크스페이스 소유자도
         Long project = createFolder(workspaceId, owner, "기획", null);
 
         call(member, patchRequest("/api/folders/" + project), "{\"name\":\"멤버\"}").andExpect(status().isForbidden());
-        call(workspaceOwner, patchRequest("/api/folders/" + project), "{\"name\":\"기획 1\"}")
+        call(workspaceOwner, patchRequest("/api/folders/" + project), "{\"name\":\"기획 1\"}").andExpect(status().isForbidden());
+        call(owner, patchRequest("/api/folders/" + project), "{\"name\":\"기획 1\"}")
                 .andExpect(jsonPath("$.data.name").value("기획 1"));
 
         call(workspaceOwner, deleteRequest("/api/folders/" + project), null).andExpect(status().isOk());
@@ -247,6 +248,26 @@ class FolderFlowTest extends ApiTestSupport {
         call(workspaceOwner, putRequest(path), "{\"templateId\":null}").andExpect(status().isOk());
         call(member, getRequest("/api/workspaces/" + workspaceId), null)
                 .andExpect(jsonPath("$.data.defaultTemplateId").doesNotExist());
+    }
+
+    @Test
+    void 쓰레기통에_있는_폴더도_떠난_멤버의_기록을_지우고_소유권을_넘긴다() throws Exception {
+        // 2026-11-17: 복구했을 때 워크스페이스에 없는 사람이 멤버나 소유자로 남지 않게
+        Long project = createFolder(workspaceId, owner, "기획", null);
+        call(owner, post("/api/folders/" + project + "/members"), "{\"userId\":%d}".formatted(member)).andExpect(status().isOk());
+        call(owner, deleteRequest("/api/folders/" + project), null).andExpect(status().isOk());
+
+        call(workspaceOwner, deleteRequest("/api/workspaces/" + workspaceId + "/members/" + owner), null).andExpect(status().isOk());
+        call(member, deleteRequest("/api/workspaces/" + workspaceId + "/members/me"), null).andExpect(status().isOk());
+        call(workspaceOwner, post("/api/workspaces/" + workspaceId + "/trash/folders/" + project + "/restore"), null)
+                .andExpect(status().isOk());
+
+        // owner가 내보내질 때 먼저 초대된 member에게, member가 나갈 때 남은 멤버가 없어 워크스페이스 소유자에게 넘어간다
+        call(workspaceOwner, getRequest("/api/folders/" + project), null)
+                .andExpect(jsonPath("$.data.ownerUserId").value(workspaceOwner));
+        call(workspaceOwner, getRequest("/api/folders/" + project + "/members"), null)
+                .andExpect(jsonPath("$.data[?(@.userId == " + owner + ")]").isEmpty())
+                .andExpect(jsonPath("$.data[?(@.userId == " + member + ")]").isEmpty());
     }
 
     @Test

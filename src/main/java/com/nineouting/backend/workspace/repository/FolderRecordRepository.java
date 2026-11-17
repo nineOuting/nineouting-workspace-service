@@ -25,6 +25,15 @@ public interface FolderRecordRepository extends JpaRepository<FolderRecord, Long
     /** 워크스페이스의 모든 폴더 (쓰레기통 포함) */
     List<FolderRecord> findByWorkspaceId(Long workspaceId);
 
+    /** 워크스페이스를 떠나는 사람이 가진 쓰레기통 폴더. 복구해도 소유자가 남도록 넘긴다 (2026-11-17) */
+    @Query(value = "select id from folders where workspace_id = :workspaceId and owner_user_id = :userId and deleted_at is not null",
+            nativeQuery = true)
+    List<Long> findTrashedIdsOwnedBy(@Param("workspaceId") Long workspaceId, @Param("userId") Long userId);
+
+    @Modifying
+    @Query(value = "update folders set owner_user_id = :ownerUserId where id = :folderId", nativeQuery = true)
+    void changeOwner(@Param("folderId") Long folderId, @Param("ownerUserId") Long ownerUserId);
+
     /** 함께 쓰레기통에 들어간 폴더(같은 시각)를 되돌린다 */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("update FolderRecord f set f.deletedAt = null, f.deletedByUserId = null "
