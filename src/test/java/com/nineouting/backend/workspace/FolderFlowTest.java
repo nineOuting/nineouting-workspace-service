@@ -84,8 +84,13 @@ class FolderFlowTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.data[?(@.userId == " + member + ")].folderAccess").value("INVITED"));
         call(member, getRequest("/api/folders/" + project), null).andExpect(status().isForbidden());
         call(owner, putRequest(path), "{\"folderAccess\":\"ALL\"}").andExpect(status().isForbidden());
+        // REQ-198 워크스페이스 시작하기의 폴더 권한 정하기
+        call(workspaceOwner, getRequest("/api/workspaces/" + workspaceId), null)
+                .andExpect(jsonPath("$.data.folderAccessConfigured").value(false));
 
         call(workspaceOwner, putRequest(path), "{\"folderAccess\":\"ALL\"}").andExpect(status().isOk());
+        call(workspaceOwner, getRequest("/api/workspaces/" + workspaceId), null)
+                .andExpect(jsonPath("$.data.folderAccessConfigured").value(true));
         call(member, getRequest("/api/folders/" + project), null).andExpect(status().isOk());
         call(owner, getRequest("/api/folders/" + project + "/members"), null)
                 .andExpect(jsonPath("$.data[?(@.userId == " + member + ")].inherited").value(true));

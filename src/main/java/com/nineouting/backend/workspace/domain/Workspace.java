@@ -42,6 +42,14 @@ public class Workspace extends BaseTimeEntity {
         this.description = description;
     }
 
+    /** REQ-198 소유자가 멤버의 폴더 접근 권한을 한 번이라도 정했는지 (워크스페이스 시작하기) */
+    @Column(name = "folder_access_configured", nullable = false)
+    private boolean folderAccessConfigured;
+
+    public void markFolderAccessConfigured() {
+        this.folderAccessConfigured = true;
+    }
+
     /** REQ-199 */
     public void changeDefaultTemplate(Long templateId) {
         this.defaultTemplateId = templateId;
