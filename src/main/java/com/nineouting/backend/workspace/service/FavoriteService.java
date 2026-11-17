@@ -83,7 +83,7 @@ public class FavoriteService {
         if (workspace == null || !workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspace.getId(), userId)) {
             return null;
         }
-        return new FavoriteResponse(FavoriteType.WORKSPACE, workspace.getId(), workspace.getName(), null, null);
+        return new FavoriteResponse(FavoriteType.WORKSPACE, workspace.getId(), workspace.getName(), null, null, null);
     }
 
     private FavoriteResponse folderFavorite(Folder folder, Map<Long, Workspace> workspaces, Long userId) {
@@ -92,7 +92,7 @@ public class FavoriteService {
         }
         Workspace workspace = workspaces.get(folder.getWorkspaceId());
         return new FavoriteResponse(FavoriteType.FOLDER, workspace.getId(), workspace.getName(), folder.getId(),
-                folder.getName());
+                folder.getName(), folder.getColor());
     }
 
     private static List<Long> idsOf(List<Favorite> favorites, FavoriteType type) {
