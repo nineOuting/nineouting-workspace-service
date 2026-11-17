@@ -28,6 +28,10 @@ public class Workspace extends BaseTimeEntity {
     @Column(nullable = false, length = 100)
     private String description = "";
 
+    /** REQ-199 회의록 기본 양식 (minutes-service 양식 ID). null이면 서비스 기본 양식 */
+    @Column(name = "default_template_id")
+    private Long defaultTemplateId;
+
     public Workspace(String name) {
         this.name = name;
     }
@@ -36,5 +40,10 @@ public class Workspace extends BaseTimeEntity {
     public void update(String name, String description) {
         this.name = name;
         this.description = description;
+    }
+
+    /** REQ-199 */
+    public void changeDefaultTemplate(Long templateId) {
+        this.defaultTemplateId = templateId;
     }
 }

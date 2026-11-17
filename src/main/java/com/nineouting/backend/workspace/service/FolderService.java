@@ -42,6 +42,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class FolderService {
 
     private static final int RECENT_FOLDER_LIMIT = 10;
+    /** REQ-202 프로젝트 색 가짓수 */
+    private static final int FOLDER_COLORS = 8;
     /** 접근 권한을 잃은 폴더를 걸러내고도 10개를 채울 수 있게 넉넉히 읽는다. */
     private static final int RECENT_VISIT_READ = 30;
     private static final Comparator<Folder> FOLDER_ORDER = Comparator
@@ -88,7 +90,17 @@ public class FolderService {
         if (parentId != null) {
             throw new BusinessException(WorkspaceErrorCode.FOLDER_DEPTH_EXCEEDED);
         }
-        Folder folder = saveWithUniqueName(Folder.create(workspaceId, null, name, userId));
+        // REQ-202 새 폴더 색은 워크스페이스 폴더 수대로 돌려 가며 정한다
+        int color = (int) (folderRepository.countByWorkspaceId(workspaceId) % FOLDER_COLORS);
+        Folder folder = saveWithUniqueName(Folder.create(workspaceId, null, name, userId, color));
+        return node(folder, true, List.of());
+    }
+
+    /** REQ-202 프로젝트 색 바꾸기. 프로젝트 소유자와 워크스페이스 소유자 */
+    @Transactional
+    public FolderNode changeColor(Long folderId, Long userId, int color) {
+        Folder folder = folderAccess.requireOwnerOrWorkspaceOwner(folderId, userId);
+        folder.changeColor(color);
         return node(folder, true, List.of());
     }
 
@@ -107,7 +119,7 @@ public class FolderService {
         }
         path.add(new PathItem(folder.getId(), folder.getName(), true));
         return new FolderDetailResponse(folder.getId(), folder.getWorkspaceId(), folder.getParentId(), folder.getName(),
-                folder.isDefaultFolder(), folder.getOwnerUserId(), folder.isOwnedBy(userId), path);
+                folder.isDefaultFolder(), folder.getOwnerUserId(), folder.isOwnedBy(userId), path, folder.getColor());
     }
 
     /**
@@ -257,7 +269,7 @@ public class FolderService {
 
     private static FolderNode node(Folder folder, boolean accessible, List<FolderNode> children) {
         return new FolderNode(folder.getId(), folder.getName(), folder.isDefaultFolder(), folder.getOwnerUserId(),
-                accessible, children);
+                accessible, children, folder.getColor());
     }
 
     private LocalDateTime now() {

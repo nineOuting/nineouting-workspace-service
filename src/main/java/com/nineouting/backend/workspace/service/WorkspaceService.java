@@ -88,7 +88,7 @@ public class WorkspaceService {
         Workspace workspace = workspaceRepository.findById(workspaceId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
         return new WorkspaceDetailResponse(workspace.getId(), workspace.getName(), workspace.getDescription(), member.getRole(),
-                workspaceMemberRepository.countByWorkspaceId(workspaceId));
+                workspaceMemberRepository.countByWorkspaceId(workspaceId), workspace.getDefaultTemplateId());
     }
 
     /** REQ-163. 소유자만. 다른 서비스는 이름을 저장하지 않고 그때그때 조회하므로 알릴 이벤트가 없다 */
@@ -99,7 +99,18 @@ public class WorkspaceService {
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
         workspace.update(name, description);
         return new WorkspaceDetailResponse(workspace.getId(), workspace.getName(), workspace.getDescription(), member.getRole(),
-                workspaceMemberRepository.countByWorkspaceId(workspaceId));
+                workspaceMemberRepository.countByWorkspaceId(workspaceId), workspace.getDefaultTemplateId());
+    }
+
+    /** REQ-199 회의록 기본 양식. 소유자만. 양식이 있는지는 화면이 고른 목록에서 확인한다 */
+    @Transactional
+    public WorkspaceDetailResponse changeDefaultTemplate(Long workspaceId, Long userId, Long templateId) {
+        WorkspaceMember member = folderAccess.requireWorkspaceOwner(workspaceId, userId);
+        Workspace workspace = workspaceRepository.findById(workspaceId)
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.NOT_FOUND));
+        workspace.changeDefaultTemplate(templateId);
+        return new WorkspaceDetailResponse(workspace.getId(), workspace.getName(), workspace.getDescription(), member.getRole(),
+                workspaceMemberRepository.countByWorkspaceId(workspaceId), workspace.getDefaultTemplateId());
     }
 
     @Transactional

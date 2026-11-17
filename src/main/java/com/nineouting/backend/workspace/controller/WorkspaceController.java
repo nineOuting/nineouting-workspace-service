@@ -3,6 +3,7 @@ package com.nineouting.backend.workspace.controller;
 import com.nineouting.backend.common.security.jwt.AuthenticatedUser;
 import com.nineouting.backend.common.security.web.CurrentUser;
 import com.nineouting.backend.common.web.response.ApiResponse;
+import com.nineouting.backend.workspace.dto.DefaultTemplateRequest;
 import com.nineouting.backend.workspace.dto.CreateWorkspaceRequest;
 import com.nineouting.backend.workspace.dto.EmailInvitationResponse;
 import com.nineouting.backend.workspace.dto.EmailInviteRequest;
@@ -74,6 +75,14 @@ public class WorkspaceController {
     public ApiResponse<WorkspaceDetailResponse> update(@CurrentUser AuthenticatedUser user, @PathVariable Long workspaceId,
                                                        @Valid @RequestBody UpdateWorkspaceRequest request) {
         return ApiResponse.ok(workspaceService.update(workspaceId, user.userId(), request.name(), request.description()));
+    }
+
+    /** REQ-199 회의록 기본 양식. 소유자만. templateId가 null이면 서비스 기본 양식 */
+    @PutMapping("/{workspaceId}/default-template")
+    public ApiResponse<WorkspaceDetailResponse> changeDefaultTemplate(@CurrentUser AuthenticatedUser user,
+                                                                      @PathVariable Long workspaceId,
+                                                                      @RequestBody DefaultTemplateRequest request) {
+        return ApiResponse.ok(workspaceService.changeDefaultTemplate(workspaceId, user.userId(), request.templateId()));
     }
 
     /** REQ-030 */
