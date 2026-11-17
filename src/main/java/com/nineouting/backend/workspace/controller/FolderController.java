@@ -6,6 +6,7 @@ import com.nineouting.backend.common.web.response.ApiResponse;
 import com.nineouting.backend.workspace.dto.CreateFolderRequest;
 import com.nineouting.backend.workspace.dto.FolderDetailResponse;
 import com.nineouting.backend.workspace.dto.FolderMemberResponse;
+import com.nineouting.backend.workspace.dto.FolderColorRequest;
 import com.nineouting.backend.workspace.dto.FolderNode;
 import com.nineouting.backend.workspace.dto.RecentFolderResponse;
 import com.nineouting.backend.workspace.dto.RenameFolderRequest;
@@ -55,6 +56,13 @@ public class FolderController {
     public ApiResponse<FolderNode> rename(@CurrentUser AuthenticatedUser user, @PathVariable Long folderId,
                                           @Valid @RequestBody RenameFolderRequest request) {
         return ApiResponse.ok(folderService.rename(folderId, user.userId(), request.name()));
+    }
+
+    /** REQ-202 프로젝트 색 (0~7). 프로젝트 소유자와 워크스페이스 소유자 */
+    @PutMapping("/api/folders/{folderId}/color")
+    public ApiResponse<FolderNode> changeColor(@CurrentUser AuthenticatedUser user, @PathVariable Long folderId,
+                                               @Valid @RequestBody FolderColorRequest request) {
+        return ApiResponse.ok(folderService.changeColor(folderId, user.userId(), request.color()));
     }
 
     /** REQ-058 */

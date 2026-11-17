@@ -8,6 +8,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.jayway.jsonpath.JsonPath;
+
 import com.nineouting.backend.workspace.service.TrashService;
 import java.time.Duration;
 import org.junit.jupiter.api.BeforeEach;
@@ -82,8 +84,13 @@ class FolderFlowTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.data[?(@.userId == " + member + ")].folderAccess").value("INVITED"));
         call(member, getRequest("/api/folders/" + project), null).andExpect(status().isForbidden());
         call(owner, putRequest(path), "{\"folderAccess\":\"ALL\"}").andExpect(status().isForbidden());
+        // REQ-198 워크스페이스 시작하기의 폴더 권한 정하기
+        call(workspaceOwner, getRequest("/api/workspaces/" + workspaceId), null)
+                .andExpect(jsonPath("$.data.folderAccessConfigured").value(false));
 
         call(workspaceOwner, putRequest(path), "{\"folderAccess\":\"ALL\"}").andExpect(status().isOk());
+        call(workspaceOwner, getRequest("/api/workspaces/" + workspaceId), null)
+                .andExpect(jsonPath("$.data.folderAccessConfigured").value(true));
         call(member, getRequest("/api/folders/" + project), null).andExpect(status().isOk());
         call(owner, getRequest("/api/folders/" + project + "/members"), null)
                 .andExpect(jsonPath("$.data[?(@.userId == " + member + ")].inherited").value(true));
@@ -174,7 +181,7 @@ class FolderFlowTest extends ApiTestSupport {
         call(owner, deleteRequest("/api/folders/" + project), null).andExpect(status().isOk());
 
         call(owner, getRequest("/api/folders/" + project), null).andExpect(status().isNotFound());
-        call(member, getRequest("/api/workspaces/" + workspaceId + "/folders"), null)
+        call(owner, getRequest("/api/workspaces/" + workspaceId + "/folders"), null)
                 .andExpect(jsonPath("$.data[*].name").value(not(hasItem("기획"))));
         // 영구 삭제 전에는 안의 회의·회의록을 지우지 않는다
         assertThat(outboxContains("FolderDeleted", "\"folderIds\":[" + project + "]")).isFalse();
@@ -210,6 +217,36 @@ class FolderFlowTest extends ApiTestSupport {
 
         call(workspaceOwner, deleteRequest("/api/folders/" + project), null).andExpect(status().isOk());
         call(owner, getRequest("/api/folders/" + project), null).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void 프로젝트_색은_만들_때_정해지고_소유자가_바꾼다() throws Exception {
+        // REQ-202
+        Long first = createFolder(workspaceId, owner, "첫째", null);
+        Long second = createFolder(workspaceId, owner, "둘째", null);
+        int firstColor = JsonPath.read(call(owner, getRequest("/api/folders/" + first), null)
+                .andReturn().getResponse().getContentAsString(), "$.data.color");
+        call(owner, getRequest("/api/folders/" + second), null).andExpect(jsonPath("$.data.color").value((firstColor + 1) % 8));
+
+        String path = "/api/folders/" + first + "/color";
+        call(member, putRequest(path), "{\"color\":5}").andExpect(status().isForbidden());
+        call(owner, putRequest(path), "{\"color\":8}").andExpect(status().isBadRequest());
+        call(owner, putRequest(path), "{\"color\":5}").andExpect(jsonPath("$.data.color").value(5));
+        call(workspaceOwner, putRequest(path), "{\"color\":3}").andExpect(status().isOk());
+        call(owner, getRequest("/api/workspaces/" + workspaceId + "/folders"), null)
+                .andExpect(jsonPath("$.data[?(@.folderId == " + first + ")].color", hasItem(3)));
+    }
+
+    @Test
+    void 회의록_기본_양식은_워크스페이스_소유자만_정한다() throws Exception {
+        // REQ-199
+        String path = "/api/workspaces/" + workspaceId + "/default-template";
+        call(owner, putRequest(path), "{\"templateId\":7}").andExpect(status().isForbidden());
+        call(workspaceOwner, putRequest(path), "{\"templateId\":7}").andExpect(jsonPath("$.data.defaultTemplateId").value(7));
+        call(member, getRequest("/api/workspaces/" + workspaceId), null).andExpect(jsonPath("$.data.defaultTemplateId").value(7));
+        call(workspaceOwner, putRequest(path), "{\"templateId\":null}").andExpect(status().isOk());
+        call(member, getRequest("/api/workspaces/" + workspaceId), null)
+                .andExpect(jsonPath("$.data.defaultTemplateId").doesNotExist());
     }
 
     @Test

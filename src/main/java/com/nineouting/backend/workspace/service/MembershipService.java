@@ -179,6 +179,8 @@ public class MembershipService {
     public void changeFolderAccess(Long workspaceId, Long ownerUserId, Long targetUserId, FolderAccessScope scope) {
         folderAccess.requireWorkspaceOwner(workspaceId, ownerUserId);
         folderAccess.requireMember(workspaceId, targetUserId).changeFolderAccess(scope);
+        // REQ-198 워크스페이스 시작하기: 폴더 권한 정하기를 마친 것으로 둔다
+        workspaceRepository.findById(workspaceId).ifPresent(Workspace::markFolderAccessConfigured);
     }
 
     /** REQ-036 내보내기. 내보낸 사람이 가진 폴더는 자동으로 양도한다. */

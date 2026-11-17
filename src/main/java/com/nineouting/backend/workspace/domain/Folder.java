@@ -53,20 +53,34 @@ public class Folder extends BaseTimeEntity {
     @Column(name = "deleted_by_user_id")
     private Long deletedByUserId;
 
-    private Folder(Long workspaceId, Long parentId, String name, Long ownerUserId, boolean defaultFolder) {
+    /** REQ-202 프로젝트 색 (0~7) */
+    @Column(nullable = false)
+    private int color;
+
+    private Folder(Long workspaceId, Long parentId, String name, Long ownerUserId, boolean defaultFolder, int color) {
         this.workspaceId = workspaceId;
         this.parentId = parentId;
         this.name = name;
         this.ownerUserId = ownerUserId;
         this.defaultFolder = defaultFolder;
+        this.color = color;
     }
 
     public static Folder createDefault(Long workspaceId) {
-        return new Folder(workspaceId, null, DEFAULT_NAME, null, true);
+        return new Folder(workspaceId, null, DEFAULT_NAME, null, true, 0);
     }
 
     public static Folder create(Long workspaceId, Long parentId, String name, Long ownerUserId) {
-        return new Folder(workspaceId, parentId, name, ownerUserId, false);
+        return create(workspaceId, parentId, name, ownerUserId, 0);
+    }
+
+    /** REQ-202 만들 때 색을 자동으로 정한다 */
+    public static Folder create(Long workspaceId, Long parentId, String name, Long ownerUserId, int color) {
+        return new Folder(workspaceId, parentId, name, ownerUserId, false, color);
+    }
+
+    public void changeColor(int color) {
+        this.color = color;
     }
 
     public boolean isTopLevel() {
