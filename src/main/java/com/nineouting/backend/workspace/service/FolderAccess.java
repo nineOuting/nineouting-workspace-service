@@ -82,6 +82,16 @@ public class FolderAccess {
         return folder;
     }
 
+    /** REQ-160 폴더 소유자인지. 소유자가 없는 기본 폴더는 워크스페이스 소유자로 본다 */
+    public boolean isFolderOwner(Folder folder, Long userId) {
+        if (folder.isDefaultFolder()) {
+            return workspaceMemberRepository.findByWorkspaceIdAndUserId(folder.getWorkspaceId(), userId)
+                    .map(WorkspaceMember::isOwner)
+                    .orElse(false);
+        }
+        return folder.isOwnedBy(userId);
+    }
+
     public boolean canAccess(Folder folder, Long userId) {
         if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(folder.getWorkspaceId(), userId)) {
             return false;
