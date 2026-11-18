@@ -331,9 +331,19 @@ class FolderFlowTest extends ApiTestSupport {
         inviteToFolder(project, workspaceOwner, member);
 
         mockMvc.perform(getRequest("/internal/folders/" + project + "/access").param("userId", member.toString()))
-                .andExpect(jsonPath("$.data.allowed").value(true));
+                .andExpect(jsonPath("$.data.allowed").value(true))
+                .andExpect(jsonPath("$.data.owner").value(false));
         mockMvc.perform(getRequest("/internal/folders/" + project + "/access").param("userId", workspaceOwner.toString()))
-                .andExpect(jsonPath("$.data.allowed").value(true));
+                .andExpect(jsonPath("$.data.allowed").value(true))
+                .andExpect(jsonPath("$.data.owner").value(false));
+        // REQ-160 폴더 소유자. 소유자가 없는 기본 폴더는 워크스페이스 소유자
+        mockMvc.perform(getRequest("/internal/folders/" + project + "/access").param("userId", owner.toString()))
+                .andExpect(jsonPath("$.data.owner").value(true));
+        Long defaultFolder = defaultFolder(workspaceId, member);
+        mockMvc.perform(getRequest("/internal/folders/" + defaultFolder + "/access").param("userId", workspaceOwner.toString()))
+                .andExpect(jsonPath("$.data.owner").value(true));
+        mockMvc.perform(getRequest("/internal/folders/" + defaultFolder + "/access").param("userId", member.toString()))
+                .andExpect(jsonPath("$.data.owner").value(false));
         mockMvc.perform(getRequest("/internal/folders/" + project + "/members"))
                 .andExpect(jsonPath("$.data", containsInAnyOrder(owner.intValue(), member.intValue(),
                         workspaceOwner.intValue())));

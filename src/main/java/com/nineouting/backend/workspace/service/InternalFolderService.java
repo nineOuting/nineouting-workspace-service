@@ -31,7 +31,8 @@ public class InternalFolderService {
     @Transactional(readOnly = true)
     public FolderAccessResponse access(Long folderId, Long userId) {
         Folder folder = folderAccess.requireFolder(folderId);
-        return new FolderAccessResponse(folderId, folder.getWorkspaceId(), folderAccess.canAccess(folder, userId));
+        return new FolderAccessResponse(folderId, folder.getWorkspaceId(), folderAccess.canAccess(folder, userId),
+                folderAccess.isFolderOwner(folder, userId));
     }
 
     /** 회의 참석자 선택 (REQ-061): 폴더에 들어갈 수 있는 사람 전체 */
