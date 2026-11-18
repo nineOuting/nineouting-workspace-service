@@ -128,10 +128,11 @@ public class FolderService {
     @Transactional
     public FolderNode rename(Long folderId, Long userId, String name) {
         Folder folder = folderAccess.requireFolder(folderId);
+        // 2026-11-17 시트(REQ-165): 이름 바꾸기는 프로젝트 소유자만. 소유자가 없는 기본 폴더는 워크스페이스 소유자
         if (folder.isDefaultFolder()) {
             folderAccess.requireWorkspaceOwner(folder.getWorkspaceId(), userId);
         } else {
-            folderAccess.requireOwnerOrWorkspaceOwner(folderId, userId);
+            folderAccess.requireOwner(folderId, userId);
         }
         folder.rename(name);
         saveWithUniqueName(folder);
