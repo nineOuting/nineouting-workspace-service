@@ -15,6 +15,7 @@ import com.nineouting.backend.workspace.dto.PendingInvitationResponse;
 import com.nineouting.backend.workspace.dto.UpdateWorkspaceRequest;
 import com.nineouting.backend.workspace.dto.UserIdRequest;
 import com.nineouting.backend.workspace.dto.WorkspaceDetailResponse;
+import com.nineouting.backend.workspace.dto.OwnershipResponse;
 import com.nineouting.backend.workspace.dto.WorkspaceResponse;
 import com.nineouting.backend.workspace.service.EmailInvitationService;
 import com.nineouting.backend.workspace.service.MembershipService;
@@ -44,6 +45,19 @@ public class WorkspaceController {
     private final EmailInvitationService emailInvitationService;
 
     /** REQ-031 */
+    /** REQ-207 탈퇴 전 확인: 내가 소유한 워크스페이스와 폴더 */
+    @GetMapping("/ownership/me")
+    public ApiResponse<OwnershipResponse> myOwnership(@CurrentUser AuthenticatedUser user) {
+        return ApiResponse.ok(membershipService.ownership(user.userId()));
+    }
+
+    /** REQ-207 탈퇴: 모든 워크스페이스에서 나간다. 소유한 것이 있으면 409 */
+    @DeleteMapping("/memberships/me")
+    public ApiResponse<Void> leaveAll(@CurrentUser AuthenticatedUser user) {
+        membershipService.leaveAll(user.userId());
+        return ApiResponse.ok();
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<WorkspaceResponse>> create(@CurrentUser AuthenticatedUser user,
                                                                  @Valid @RequestBody CreateWorkspaceRequest request) {

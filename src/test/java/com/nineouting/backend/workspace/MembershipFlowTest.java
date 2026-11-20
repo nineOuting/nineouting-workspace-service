@@ -309,6 +309,36 @@ class MembershipFlowTest extends ApiTestSupport {
     }
 
     @Test
+    void 탈퇴_전에_소유한_것을_알려_주고_소유한_것이_없을_때만_모든_워크스페이스에서_나간다() throws Exception {
+        Long workspaceOwner = newUser();
+        Long folderOwner = newUser();
+        Long workspaceId = createWorkspace(workspaceOwner);
+        Long otherWorkspaceId = createWorkspace(workspaceOwner);
+        join(workspaceId, workspaceOwner, folderOwner);
+        join(otherWorkspaceId, workspaceOwner, folderOwner);
+        Long folderId = createFolder(workspaceId, folderOwner, "기획", null);
+
+        call(workspaceOwner, getRequest("/api/workspaces/ownership/me"), null)
+                .andExpect(jsonPath("$.data.workspaces.length()").value(2));
+        call(folderOwner, getRequest("/api/workspaces/ownership/me"), null)
+                .andExpect(jsonPath("$.data.workspaces.length()").value(0))
+                .andExpect(jsonPath("$.data.folders.length()").value(1));
+        call(folderOwner, deleteRequest("/api/workspaces/memberships/me"), null)
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("WITHDRAW_OWNERSHIP_REMAINING"));
+        call(folderOwner, getRequest("/api/workspaces/" + workspaceId), null).andExpect(status().isOk());
+
+        inviteToFolder(folderId, folderOwner, workspaceOwner);
+        call(folderOwner, putRequest("/api/folders/" + folderId + "/owner"), "{\"userId\":" + workspaceOwner + "}")
+                .andExpect(status().isOk());
+        call(folderOwner, deleteRequest("/api/workspaces/memberships/me"), null).andExpect(status().isOk());
+
+        call(folderOwner, getRequest("/api/workspaces/" + workspaceId), null).andExpect(status().isForbidden());
+        call(folderOwner, getRequest("/api/workspaces/" + otherWorkspaceId), null).andExpect(status().isForbidden());
+        call(folderOwner, getRequest("/api/workspaces"), null).andExpect(jsonPath("$.data.length()").value(0));
+    }
+
+    @Test
     void 내보낸_멤버의_폴더는_가장_먼저_초대된_멤버에게_없으면_소유자에게_넘어간다() throws Exception {
         Long workspaceOwner = newUser();
         Long owner = newUser();

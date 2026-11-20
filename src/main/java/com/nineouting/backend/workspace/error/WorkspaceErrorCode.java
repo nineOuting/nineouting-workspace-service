@@ -25,6 +25,7 @@ public enum WorkspaceErrorCode implements ErrorCode {
     DEFAULT_FOLDER_UNDELETABLE(HttpStatus.BAD_REQUEST, "기본 폴더는 삭제할 수 없습니다"),
     OWNER_CANNOT_LEAVE(HttpStatus.BAD_REQUEST, "소유권을 양도해야 워크스페이스에서 나갈 수 있어요. 다른 멤버에게 소유권을 양도한 후 다시 시도해 주세요"),
     FOLDER_OWNERSHIP_REMAINING(HttpStatus.BAD_REQUEST, "소유한 폴더를 다른 멤버에게 양도한 뒤에 나갈 수 있습니다"),
+    WITHDRAW_OWNERSHIP_REMAINING(HttpStatus.CONFLICT, "소유한 워크스페이스나 폴더가 있어요. 다른 멤버에게 소유권을 넘긴 뒤에 탈퇴할 수 있어요"),
     NOT_FOLDER_MEMBER(HttpStatus.BAD_REQUEST, "폴더 멤버가 아닙니다"),
     FOLDER_OWNER_CANNOT_LEAVE(HttpStatus.BAD_REQUEST, "소유권을 양도해야 폴더에서 나갈 수 있어요. 다른 폴더 멤버에게 소유권을 양도한 후 다시 시도해 주세요"),
     DEFAULT_FOLDER_UNLEAVABLE(HttpStatus.BAD_REQUEST, "기본 폴더에서는 나갈 수 없습니다"),
