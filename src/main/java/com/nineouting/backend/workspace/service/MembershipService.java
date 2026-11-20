@@ -23,6 +23,8 @@ import com.nineouting.backend.workspace.dto.InviteInfoResponse;
 import com.nineouting.backend.workspace.dto.InviteLinkResponse;
 import com.nineouting.backend.workspace.dto.JoinRequestResponse;
 import com.nineouting.backend.workspace.dto.MemberResponse;
+import com.nineouting.backend.workspace.dto.OwnershipResponse;
+import com.nineouting.backend.workspace.repository.FavoriteRepository;
 import com.nineouting.backend.workspace.dto.WorkspaceResponse;
 import com.nineouting.backend.workspace.error.WorkspaceErrorCode;
 import com.nineouting.backend.workspace.repository.FolderMemberRepository;
@@ -64,6 +66,7 @@ public class MembershipService {
     private final FolderMemberRepository folderMemberRepository;
     private final FolderVisitRepository folderVisitRepository;
     private final LastWorkspaceRepository lastWorkspaceRepository;
+    private final FavoriteRepository favoriteRepository;
     private final FolderAccess folderAccess;
     private final UserClient userClient;
     private final OutboxEventWriter outboxEventWriter;
@@ -225,6 +228,39 @@ public class MembershipService {
         }
         transferTrashedFolders(workspaceId, userId, ownerOf(workspaceId).getUserId());
         leaveWorkspace(member);
+    }
+
+    /** REQ-207 탈퇴 전 확인: 내가 소유한 워크스페이스와 폴더 (소유권을 넘겨야 탈퇴할 수 있다) */
+    @Transactional(readOnly = true)
+    public OwnershipResponse ownership(Long userId) {
+        List<String> workspaces = new java.util.ArrayList<>();
+        List<String> folders = new java.util.ArrayList<>();
+        for (WorkspaceMember member : workspaceMemberRepository.findByUserId(userId)) {
+            Workspace workspace = workspaceOf(member.getWorkspaceId());
+            if (member.isOwner()) {
+                workspaces.add(workspace.getName());
+            }
+            for (Folder folder : folderRepository.findByWorkspaceIdAndOwnerUserId(workspace.getId(), userId)) {
+                folders.add(workspace.getName() + " / " + folder.getName());
+            }
+        }
+        return new OwnershipResponse(workspaces, folders);
+    }
+
+    /**
+     * REQ-207 탈퇴: 모든 워크스페이스에서 나가고 즐겨찾기를 지운다. 소유한 것이 남아 있으면 아무것도 바꾸지 않고 거절한다.
+     * 쓰레기통 폴더는 나가기(REQ-032)처럼 자동으로 넘긴다
+     */
+    @Transactional
+    public void leaveAll(Long userId) {
+        if (!ownership(userId).ownsNothing()) {
+            throw new BusinessException(WorkspaceErrorCode.WITHDRAW_OWNERSHIP_REMAINING);
+        }
+        for (WorkspaceMember member : workspaceMemberRepository.findByUserId(userId)) {
+            transferTrashedFolders(member.getWorkspaceId(), userId, ownerOf(member.getWorkspaceId()).getUserId());
+            leaveWorkspace(member);
+        }
+        favoriteRepository.deleteAll(favoriteRepository.findByUserIdOrderByCreatedAtAsc(userId));
     }
 
     /**
