@@ -4,6 +4,7 @@ import com.nineouting.backend.common.security.jwt.AuthenticatedUser;
 import com.nineouting.backend.common.security.web.CurrentUser;
 import com.nineouting.backend.common.web.response.ApiResponse;
 import com.nineouting.backend.workspace.dto.EmailInvitationInfoResponse;
+import com.nineouting.backend.workspace.dto.InvitePreviewResponse;
 import com.nineouting.backend.workspace.dto.WorkspaceResponse;
 import com.nineouting.backend.workspace.service.EmailInvitationService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,12 @@ public class EmailInvitationController {
     @GetMapping
     public ApiResponse<EmailInvitationInfoResponse> info(@CurrentUser AuthenticatedUser user, @PathVariable String token) {
         return ApiResponse.ok(invitationService.info(token, user.userId()));
+    }
+
+    /** 로그인 전 초대 첫 화면 (Gateway, 서비스 모두 인증 없이 연다) */
+    @GetMapping("/preview")
+    public ApiResponse<InvitePreviewResponse> preview(@PathVariable String token) {
+        return ApiResponse.ok(invitationService.preview(token));
     }
 
     @PostMapping("/accept")

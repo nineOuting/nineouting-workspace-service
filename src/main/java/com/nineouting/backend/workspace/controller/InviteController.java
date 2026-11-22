@@ -4,6 +4,7 @@ import com.nineouting.backend.common.security.jwt.AuthenticatedUser;
 import com.nineouting.backend.common.security.web.CurrentUser;
 import com.nineouting.backend.common.web.response.ApiResponse;
 import com.nineouting.backend.workspace.dto.InviteInfoResponse;
+import com.nineouting.backend.workspace.dto.InvitePreviewResponse;
 import com.nineouting.backend.workspace.dto.JoinRequestResponse;
 import com.nineouting.backend.workspace.dto.WorkspaceResponse;
 import com.nineouting.backend.workspace.service.MembershipService;
@@ -27,6 +28,12 @@ public class InviteController {
     @GetMapping
     public ApiResponse<InviteInfoResponse> info(@CurrentUser AuthenticatedUser user, @PathVariable String token) {
         return ApiResponse.ok(membershipService.inviteInfo(token, user.userId()));
+    }
+
+    /** 로그인 전 초대 첫 화면 (Gateway, 서비스 모두 인증 없이 연다) */
+    @GetMapping("/preview")
+    public ApiResponse<InvitePreviewResponse> preview(@PathVariable String token) {
+        return ApiResponse.ok(membershipService.invitePreview(token));
     }
 
     /** REQ-015: 승인 없이 바로 참여 */

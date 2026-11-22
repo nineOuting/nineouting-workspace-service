@@ -12,6 +12,7 @@ import com.nineouting.backend.workspace.domain.Workspace;
 import com.nineouting.backend.workspace.domain.WorkspaceMember;
 import com.nineouting.backend.workspace.domain.WorkspaceRole;
 import com.nineouting.backend.workspace.dto.EmailInvitationInfoResponse;
+import com.nineouting.backend.workspace.dto.InvitePreviewResponse;
 import com.nineouting.backend.workspace.dto.EmailInvitationResponse;
 import com.nineouting.backend.workspace.dto.PendingInvitationResponse;
 import com.nineouting.backend.workspace.dto.WorkspaceResponse;
@@ -105,6 +106,12 @@ public class EmailInvitationService {
         return new EmailInvitationInfoResponse(workspace.getId(), workspace.getName(), invitation.getEmail(),
                 inviterName(invitation.getInvitedBy()), emailMatches(invitation, userId),
                 workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspace.getId(), userId));
+    }
+
+    /** 로그인 전 초대 첫 화면. 쓸 수 없는 초대면 info와 같은 INVITATION_INVALID */
+    public InvitePreviewResponse preview(String token) {
+        EmailInvitation invitation = usable(token);
+        return new InvitePreviewResponse(workspaceOf(invitation).getName(), inviterName(invitation.getInvitedBy()));
     }
 
     /** 초대받은 이메일 계정이면 바로 멤버가 된다. 이미 멤버면 초대만 쓴 것으로 남긴다 */

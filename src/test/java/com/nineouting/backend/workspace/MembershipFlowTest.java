@@ -137,6 +137,32 @@ class MembershipFlowTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.data.inviterName").value("user" + owner));
     }
 
+    @Test
+    void 로그인_전에도_초대_첫_화면에_워크스페이스_이름과_초대한_사람이_보인다() throws Exception {
+        Long owner = newUser();
+        Long invitee = newUser();
+        Long workspaceId = createWorkspace(owner);
+        String linkToken = data(call(owner, post("/api/workspaces/" + workspaceId + "/invite-link"), null), "$.data.token");
+        call(owner, post("/api/workspaces/" + workspaceId + "/invitations"), "{\"email\":\"user%d@example.com\"}".formatted(invitee))
+                .andExpect(status().isCreated());
+        String mailToken = invitationToken("user" + invitee + "@example.com");
+
+        // 토큰 없이(로그인 전) 부른다
+        mockMvc.perform(getRequest("/api/invites/" + linkToken + "/preview"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.workspaceName").value("팀 워크스페이스"))
+                .andExpect(jsonPath("$.data.inviterName").value("user" + owner));
+        mockMvc.perform(getRequest("/api/workspaces/invitations/" + mailToken + "/preview"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.inviterName").value("user" + owner));
+        mockMvc.perform(getRequest("/api/invites/없는토큰/preview"))
+                .andExpect(jsonPath("$.code").value("INVITE_LINK_INVALID"));
+        mockMvc.perform(getRequest("/api/workspaces/invitations/없는토큰/preview"))
+                .andExpect(jsonPath("$.code").value("INVITATION_INVALID"));
+        // 미리보기 말고는 그대로 로그인이 필요하다
+        mockMvc.perform(getRequest("/api/invites/" + linkToken)).andExpect(status().isUnauthorized());
+    }
+
     /** 초대 메일 이벤트에 담긴 토큰 (메일로만 가므로 응답에는 없다). 같은 이메일이면 가장 최근 것 */
     private String invitationToken(String email) {
         return outboxEventRepository.findAll().stream()

@@ -20,6 +20,7 @@ import com.nineouting.backend.workspace.repository.FolderRecordRepository;
 import com.nineouting.backend.workspace.domain.WorkspaceMember;
 import com.nineouting.backend.workspace.domain.WorkspaceRole;
 import com.nineouting.backend.workspace.dto.InviteInfoResponse;
+import com.nineouting.backend.workspace.dto.InvitePreviewResponse;
 import com.nineouting.backend.workspace.dto.InviteLinkResponse;
 import com.nineouting.backend.workspace.dto.JoinRequestResponse;
 import com.nineouting.backend.workspace.dto.MemberResponse;
@@ -101,6 +102,13 @@ public class MembershipService {
         UserSummary inviter = userClient.findUsers(List.of(link.getCreatedBy())).get(link.getCreatedBy());
         return new InviteInfoResponse(workspace.getId(), workspace.getName(), inviter == null ? null : inviter.name(),
                 status);
+    }
+
+    /** 로그인 전 초대 첫 화면. 만료된 링크면 INVITE_LINK_INVALID */
+    public InvitePreviewResponse invitePreview(String token) {
+        InviteLink link = validLink(token);
+        UserSummary inviter = userClient.findUsers(List.of(link.getCreatedBy())).get(link.getCreatedBy());
+        return new InvitePreviewResponse(workspaceOf(link).getName(), inviter == null ? null : inviter.name());
     }
 
     /**
