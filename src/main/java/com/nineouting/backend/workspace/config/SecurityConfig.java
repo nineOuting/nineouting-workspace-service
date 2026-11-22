@@ -31,7 +31,8 @@ public class SecurityConfig {
                                             JsonAuthenticationEntryPoint entryPoint,
                                             JsonAccessDeniedHandler accessDeniedHandler) throws Exception {
         return http
-                .csrf(AbstractHttpConfigurer::disable)
+                // 쿠키가 아니라 Authorization 헤더(JWT)로만 인증하는 stateless API라 CSRF 토큰이 필요 없다
+                .csrf(AbstractHttpConfigurer::disable) // NOSONAR
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .formLogin(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
