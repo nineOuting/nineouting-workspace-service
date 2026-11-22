@@ -21,7 +21,9 @@ public class SecurityConfig {
     private static final String[] PUBLIC_PATHS = {
             "/actuator/health", "/actuator/health/**", "/actuator/prometheus",
             // 서비스 간 조회용. Gateway가 외부로 열지 않는다 (docs/services/workspace-service.md 4.5)
-            "/internal/**"
+            "/internal/**",
+            // 로그인 전 초대 첫 화면 (워크스페이스 이름, 초대한 사람). Gateway도 같은 경로만 연다
+            "/api/invites/*/preview", "/api/workspaces/invitations/*/preview"
     };
 
     @Bean
