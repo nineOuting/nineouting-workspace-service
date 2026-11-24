@@ -63,6 +63,9 @@ class FolderFlowTest extends ApiTestSupport {
         Long project = createFolder(workspaceId, owner, "기획", null);
 
         call(member, getRequest("/api/folders/" + project), null).andExpect(status().isForbidden());
+        // 들어갈 수 없는 폴더도 목록에는 보이고 accessible=false (2026-11-24 QA)
+        call(member, getRequest("/api/workspaces/" + workspaceId + "/folders"), null)
+                .andExpect(jsonPath("$.data[?(@.folderId == " + project + ")].accessible").value(false));
         call(workspaceOwner, getRequest("/api/folders/" + project), null).andExpect(status().isOk());
         call(workspaceOwner, getRequest("/api/workspaces/" + workspaceId + "/folders"), null)
                 .andExpect(jsonPath("$.data.length()").value(2));
