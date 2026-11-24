@@ -59,7 +59,10 @@ public class FolderService {
     private final UserClient userClient;
     private final Clock clock;
 
-    /** REQ-037. 들어갈 수 있는 폴더만, 기본 폴더가 맨 위. 하위 폴더에만 초대됐으면 상위 폴더는 이름만 보인다. */
+    /**
+     * REQ-037. 워크스페이스의 모든 폴더, 기본 폴더가 맨 위. 들어갈 수 없는 폴더도 보이고 accessible=false다
+     * (2026-11-24 QA: 권한 없는 폴더도 목록에 보이고, 누르면 "이 폴더는 볼 수 없어요" 안내). 하위 폴더는 들어갈 수 있는 것만.
+     */
     @Transactional(readOnly = true)
     public List<FolderNode> list(Long workspaceId, Long userId) {
         folderAccess.requireMember(workspaceId, userId);
@@ -72,10 +75,7 @@ public class FolderService {
                     .sorted(FOLDER_ORDER)
                     .map(child -> node(child, true, List.of()))
                     .toList();
-            boolean accessible = snapshot.canAccess(top, userId);
-            if (accessible || !children.isEmpty()) {
-                nodes.add(node(top, accessible, children));
-            }
+            nodes.add(node(top, snapshot.canAccess(top, userId), children));
         }
         return nodes;
     }
