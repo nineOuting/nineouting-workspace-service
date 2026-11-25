@@ -45,6 +45,7 @@ import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -175,7 +176,8 @@ public class MembershipService {
     }
 
     /** REQ-033. 멤버 누구나 본다 (관리는 소유자만, 2026-10-26 결정). */
-    @Transactional(readOnly = true)
+    // 다른 서비스 응답을 기다리는 동안 DB 연결을 잡고 있지 않는다. 조회마다 짧은 읽기 트랜잭션을 쓴다
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<MemberResponse> members(Long workspaceId, Long userId) {
         folderAccess.requireMember(workspaceId, userId);
         List<WorkspaceMember> members = workspaceMemberRepository.findByWorkspaceIdOrderByJoinedAtAsc(workspaceId);
