@@ -354,4 +354,24 @@ class FolderFlowTest extends ApiTestSupport {
                 .andExpect(jsonPath("$.data.length()").value(2))
                 .andExpect(jsonPath("$.data[0].workspaceName").value("팀 워크스페이스"));
     }
+
+    @Test
+    void 들어갈_수_있는_폴더는_캐시하고_권한이_바뀌면_새로_읽는다() throws Exception {
+        mockMvc.perform(getRequest("/internal/users/" + member + "/folders"))
+                .andExpect(jsonPath("$.data.length()").value(1));
+        // 캐시에서 읽어도 같다
+        mockMvc.perform(getRequest("/internal/users/" + member + "/folders"))
+                .andExpect(jsonPath("$.data.length()").value(1))
+                .andExpect(jsonPath("$.data[0].workspaceName").value("팀 워크스페이스"));
+
+        Long project = createFolder(workspaceId, owner, "기획", null);
+        inviteToFolder(project, workspaceOwner, member);
+        mockMvc.perform(getRequest("/internal/users/" + member + "/folders"))
+                .andExpect(jsonPath("$.data.length()").value(2));
+
+        call(workspaceOwner, deleteRequest("/api/folders/" + project + "/members/" + member), null)
+                .andExpect(status().isOk());
+        mockMvc.perform(getRequest("/internal/users/" + member + "/folders"))
+                .andExpect(jsonPath("$.data.length()").value(1));
+    }
 }

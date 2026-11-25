@@ -51,6 +51,7 @@ public class WorkspaceService {
     private final JoinRequestRepository joinRequestRepository;
     private final EmailInvitationRepository emailInvitationRepository;
     private final FolderAccess folderAccess;
+    private final AccessibleFolderCache accessibleFolderCache;
     private final OutboxEventWriter outboxEventWriter;
     private final Clock clock;
 
@@ -145,6 +146,7 @@ public class WorkspaceService {
         folderMemberRepository.deleteByFolderIdIn(folderIds);
         folderVisitRepository.deleteByFolderIdIn(folderIds);
         folderRecordRepository.deleteAllInWorkspace(workspaceId);
+        accessibleFolderCache.changed();  // 일괄 수정은 엔티티 리스너를 거치지 않는다
         workspaceMemberRepository.deleteByWorkspaceId(workspaceId);
         inviteLinkRepository.deleteByWorkspaceId(workspaceId);
         joinRequestRepository.deleteByWorkspaceId(workspaceId);

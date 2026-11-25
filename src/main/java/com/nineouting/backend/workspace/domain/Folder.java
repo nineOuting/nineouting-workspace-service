@@ -1,8 +1,10 @@
 package com.nineouting.backend.workspace.domain;
 
 import com.nineouting.backend.common.web.entity.BaseTimeEntity;
+import com.nineouting.backend.workspace.service.AccessibleFolderChangeListener;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -21,6 +23,8 @@ import org.hibernate.annotations.SQLRestriction;
  */
 @Getter
 @Entity
+// 들어갈 수 있는 폴더 캐시를 버린다
+@EntityListeners(AccessibleFolderChangeListener.class)
 @Table(name = "folders")
 @SQLRestriction("deleted_at IS NULL")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

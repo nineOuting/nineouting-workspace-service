@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -27,6 +28,7 @@ public class InternalFolderService {
     private final FolderAccess folderAccess;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final WorkspaceRepository workspaceRepository;
+    private final AccessibleFolderCache accessibleFolderCache;
 
     @Transactional(readOnly = true)
     public FolderAccessResponse access(Long folderId, Long userId) {
@@ -43,8 +45,13 @@ public class InternalFolderService {
     }
 
     /** 홈 캘린더 (REQ-018): 사용자가 들어갈 수 있는 모든 워크스페이스의 폴더 */
-    @Transactional(readOnly = true)
+    // Redis 캐시를 먼저 본다 (2026-11-25 부하 시험 후속). 캐시를 보는 동안 DB 연결을 잡지 않는다
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public List<AccessibleFolderResponse> accessibleFolders(Long userId) {
+        return accessibleFolderCache.get(userId, () -> load(userId));
+    }
+
+    private List<AccessibleFolderResponse> load(Long userId) {
         List<Long> workspaceIds = workspaceMemberRepository.findByUserId(userId).stream()
                 .map(WorkspaceMember::getWorkspaceId)
                 .toList();

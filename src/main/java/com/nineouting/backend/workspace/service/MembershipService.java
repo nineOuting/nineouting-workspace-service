@@ -70,6 +70,7 @@ public class MembershipService {
     private final LastWorkspaceRepository lastWorkspaceRepository;
     private final FavoriteRepository favoriteRepository;
     private final FolderAccess folderAccess;
+    private final AccessibleFolderCache accessibleFolderCache;
     private final UserClient userClient;
     private final OutboxEventWriter outboxEventWriter;
     private final WorkspaceProperties properties;
@@ -285,6 +286,7 @@ public class MembershipService {
             Long newOwner = next.map(FolderMember::getUserId).orElse(ownerUserId);
             folderMemberRepository.findByFolderIdAndUserId(folderId, newOwner).ifPresent(folderMemberRepository::delete);
             folderRecordRepository.changeOwner(folderId, newOwner);
+            accessibleFolderCache.changed();  // 일괄 수정은 엔티티 리스너를 거치지 않는다
         }
     }
 
