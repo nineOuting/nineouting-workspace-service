@@ -1,8 +1,10 @@
 package com.nineouting.backend.workspace.domain;
 
 import com.nineouting.backend.common.web.entity.BaseTimeEntity;
+import com.nineouting.backend.workspace.service.AccessibleFolderChangeListener;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -13,6 +15,8 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
+// 들어갈 수 있는 폴더 캐시를 버린다
+@EntityListeners(AccessibleFolderChangeListener.class)
 @Table(name = "workspaces")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Workspace extends BaseTimeEntity {

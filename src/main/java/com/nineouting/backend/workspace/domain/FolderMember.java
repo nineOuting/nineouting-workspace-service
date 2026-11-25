@@ -1,7 +1,9 @@
 package com.nineouting.backend.workspace.domain;
 
+import com.nineouting.backend.workspace.service.AccessibleFolderChangeListener;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -14,6 +16,8 @@ import lombok.NoArgsConstructor;
 /** 폴더에 초대된 멤버. 폴더를 만든 사람(소유자)은 여기 없다. */
 @Getter
 @Entity
+// 들어갈 수 있는 폴더 캐시를 버린다
+@EntityListeners(AccessibleFolderChangeListener.class)
 @Table(name = "folder_members")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class FolderMember {

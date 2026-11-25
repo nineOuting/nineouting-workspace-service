@@ -47,6 +47,7 @@ public class TrashService {
     private final FolderVisitRepository folderVisitRepository;
     private final FavoriteRepository favoriteRepository;
     private final FolderAccess folderAccess;
+    private final AccessibleFolderCache accessibleFolderCache;
     private final UserClient userClient;
     private final OutboxEventWriter outboxEventWriter;
     private final WorkspaceProperties properties;
@@ -76,6 +77,7 @@ public class TrashService {
         FolderRecord folder = requireManageable(workspaceId, folderId, userId);
         try {
             folderRecordRepository.restore(folder.getId(), folder.getDeletedAt());
+            accessibleFolderCache.changed();  // 일괄 수정은 엔티티 리스너를 거치지 않는다
         } catch (DataIntegrityViolationException e) {
             throw new BusinessException(WorkspaceErrorCode.FOLDER_NAME_DUPLICATED);
         }
@@ -108,6 +110,7 @@ public class TrashService {
         folderVisitRepository.deleteByFolderIdIn(folderIds);
         favoriteRepository.deleteByTargetTypeAndTargetIdIn(FavoriteType.FOLDER, folderIds);
         if (folderRecordRepository.deleteTrashed(folderIds) > 0) {
+            accessibleFolderCache.changed();  // 일괄 수정은 엔티티 리스너를 거치지 않는다
             outboxEventWriter.append(FolderDeleted.TOPIC, folder.getWorkspaceId().toString(), FolderDeleted.TYPE,
                     new FolderDeleted(folder.getWorkspaceId(), folderIds));
         }
