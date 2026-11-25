@@ -129,11 +129,12 @@ public class FolderService {
     @Transactional
     public FolderNode rename(Long folderId, Long userId, String name) {
         Folder folder = folderAccess.requireFolder(folderId);
-        // 2026-11-17 시트(REQ-165): 이름 바꾸기는 프로젝트 소유자만. 소유자가 없는 기본 폴더는 워크스페이스 소유자
+        // 2026-11-25 (피그마 04 프로젝트 코멘트, 사용자 결정): 이름도 색, 삭제처럼 프로젝트 소유자와 워크스페이스 소유자.
+        // 소유자가 없는 기본 폴더는 워크스페이스 소유자
         if (folder.isDefaultFolder()) {
             folderAccess.requireWorkspaceOwner(folder.getWorkspaceId(), userId);
         } else {
-            folderAccess.requireOwner(folderId, userId);
+            folderAccess.requireOwnerOrWorkspaceOwner(folderId, userId);
         }
         folder.rename(name);
         saveWithUniqueName(folder);

@@ -15,6 +15,7 @@ import java.time.Duration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 
 class FolderFlowTest extends ApiTestSupport {
 
@@ -210,14 +211,15 @@ class FolderFlowTest extends ApiTestSupport {
     }
 
     @Test
-    void 이름은_폴더_소유자만_바꾸고_워크스페이스_소유자는_남이_만든_폴더도_지운다() throws Exception {
-        // 2026-11-17 시트(REQ-165): 이름 바꾸기는 프로젝트 소유자만, 삭제는 워크스페이스 소유자도
+    void 이름은_폴더_소유자와_워크스페이스_소유자가_바꾸고_워크스페이스_소유자는_남이_만든_폴더도_지운다() throws Exception {
+        // 2026-11-25 (피그마 04 프로젝트 코멘트): 이름, 색, 삭제는 프로젝트 소유자와 워크스페이스 소유자
         Long project = createFolder(workspaceId, owner, "기획", null);
 
         call(member, patchRequest("/api/folders/" + project), "{\"name\":\"멤버\"}").andExpect(status().isForbidden());
-        call(workspaceOwner, patchRequest("/api/folders/" + project), "{\"name\":\"기획 1\"}").andExpect(status().isForbidden());
         call(owner, patchRequest("/api/folders/" + project), "{\"name\":\"기획 1\"}")
                 .andExpect(jsonPath("$.data.name").value("기획 1"));
+        call(workspaceOwner, patchRequest("/api/folders/" + project), "{\"name\":\"기획 2\"}")
+                .andExpect(jsonPath("$.data.name").value("기획 2"));
 
         call(workspaceOwner, deleteRequest("/api/folders/" + project), null).andExpect(status().isOk());
         call(owner, getRequest("/api/folders/" + project), null).andExpect(status().isNotFound());
@@ -251,6 +253,19 @@ class FolderFlowTest extends ApiTestSupport {
         call(workspaceOwner, putRequest(path), "{\"templateId\":null}").andExpect(status().isOk());
         call(member, getRequest("/api/workspaces/" + workspaceId), null)
                 .andExpect(jsonPath("$.data.defaultTemplateId").doesNotExist());
+    }
+
+    @Test
+    void 양식함_사본을_기본_양식으로_정하는_서비스_간_주소도_소유자만_된다() throws Exception {
+        // REQ-213 minutes-service가 부른다
+        String path = "/internal/workspaces/" + workspaceId + "/default-template";
+        mockMvc.perform(putRequest(path).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":%d,\"templateId\":9}".formatted(member)))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(putRequest(path).contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":%d,\"templateId\":9}".formatted(workspaceOwner)))
+                .andExpect(status().isOk());
+        call(member, getRequest("/api/workspaces/" + workspaceId), null).andExpect(jsonPath("$.data.defaultTemplateId").value(9));
     }
 
     @Test
