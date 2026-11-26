@@ -45,7 +45,6 @@ import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -177,8 +176,8 @@ public class MembershipService {
     }
 
     /** REQ-033. 멤버 누구나 본다 (관리는 소유자만, 2026-10-26 결정). */
-    // 다른 서비스 응답을 기다리는 동안 DB 연결을 잡고 있지 않는다. 조회마다 짧은 읽기 트랜잭션을 쓴다
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    // 트랜잭션을 두지 않는다. 조회마다 연결을 잡았다 바로 돌려줘서, 다른 서비스를 기다리는 동안 연결을 쥐지 않는다
+    // (NOT_SUPPORTED는 첫 조회의 연결을 메서드 끝까지 쥔다. 2026-11-26 부하 시험, RemoteCallConnectionTest)
     public List<MemberResponse> members(Long workspaceId, Long userId) {
         folderAccess.requireMember(workspaceId, userId);
         List<WorkspaceMember> members = workspaceMemberRepository.findByWorkspaceIdOrderByJoinedAtAsc(workspaceId);

@@ -32,7 +32,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -159,8 +158,8 @@ public class FolderService {
     }
 
     /** REQ-041. 들어갈 수 있는 사람 전체. 상위 폴더 멤버라서 들어오는 사람은 inherited. */
-    // 다른 서비스 응답을 기다리는 동안 DB 연결을 잡고 있지 않는다. 조회마다 짧은 읽기 트랜잭션을 쓴다
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    // 트랜잭션을 두지 않는다. 조회마다 연결을 잡았다 바로 돌려줘서, 다른 서비스를 기다리는 동안 연결을 쥐지 않는다
+    // (NOT_SUPPORTED는 첫 조회의 연결을 메서드 끝까지 쥔다. 2026-11-26 부하 시험, RemoteCallConnectionTest)
     public List<FolderMemberResponse> members(Long folderId, Long userId) {
         Folder folder = folderAccess.requireAccess(folderId, userId);
         Snapshot snapshot = folderAccess.snapshot(folder.getWorkspaceId());
