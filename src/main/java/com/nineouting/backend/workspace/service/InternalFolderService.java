@@ -15,7 +15,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -45,8 +44,8 @@ public class InternalFolderService {
     }
 
     /** 홈 캘린더 (REQ-018): 사용자가 들어갈 수 있는 모든 워크스페이스의 폴더 */
-    // Redis 캐시를 먼저 본다 (2026-11-25 부하 시험 후속). 캐시를 보는 동안 DB 연결을 잡지 않는다
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    // Redis 캐시를 먼저 본다 (2026-11-25 부하 시험 후속). 트랜잭션을 두지 않아 조회마다 연결을 바로 돌려준다
+    // (NOT_SUPPORTED는 첫 조회의 연결을 메서드 끝까지 쥔다. 2026-11-26)
     public List<AccessibleFolderResponse> accessibleFolders(Long userId) {
         return accessibleFolderCache.get(userId, () -> load(userId));
     }
