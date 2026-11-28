@@ -2,12 +2,17 @@ package com.nineouting.backend.workspace;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.startsWith;
+import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.time.Duration;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.MediaType;
 
 class MembershipFlowTest extends ApiTestSupport {
 
@@ -23,6 +28,30 @@ class MembershipFlowTest extends ApiTestSupport {
         call(workspaceOwner, getRequest("/api/workspaces/" + workspaceId + "/folders"), null)
                 .andExpect(jsonPath("$.data[0].name").value("기본 폴더"))
                 .andExpect(jsonPath("$.data[0].isDefault").value(true));
+    }
+
+    @Test
+    void 관리자는_사용자를_일반_멤버로_넣고_이미_멤버면_그대로_둔다() throws Exception {
+        // REQ-218 admin-service가 부른다
+        Long owner = newUser();
+        Long user = newUser();
+        Long workspaceId = createWorkspace(owner);
+        String path = "/internal/admin/workspaces/" + workspaceId + "/members";
+
+        mockMvc.perform(post(path).contentType(MediaType.APPLICATION_JSON).content("{\"userId\":%d}".formatted(user)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.added").value(true));
+        call(user, get("/api/workspaces/" + workspaceId), null).andExpect(status().isOk());
+        mockMvc.perform(post(path).contentType(MediaType.APPLICATION_JSON).content("{\"userId\":%d}".formatted(owner)))
+                .andExpect(jsonPath("$.data.added").value(false));
+
+        // 없는 워크스페이스, 없는 사용자
+        mockMvc.perform(post("/internal/admin/workspaces/999999/members").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":%d}".formatted(user)))
+                .andExpect(status().isNotFound());
+        given(userClient.findUsers(anyCollection())).willReturn(Map.of());
+        mockMvc.perform(post(path).contentType(MediaType.APPLICATION_JSON).content("{\"userId\":%d}".formatted(newUser())))
+                .andExpect(status().isNotFound());
     }
 
     @Test

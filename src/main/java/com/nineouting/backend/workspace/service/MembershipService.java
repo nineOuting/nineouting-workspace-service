@@ -125,6 +125,23 @@ public class MembershipService {
         return new WorkspaceResponse(workspace.getId(), workspace.getName(), member.getRole(), false);
     }
 
+    /**
+     * REQ-218 관리자 빠른 작업: 사용자를 일반 멤버로 넣는다 (초대 링크로 들어온 것과 같다).
+     * 없는 워크스페이스나 사용자면 NOT_FOUND. 이미 멤버면 그대로 두고 false
+     */
+    @Transactional
+    public boolean addByAdmin(Long workspaceId, Long userId) {
+        workspaceOf(workspaceId);
+        if (userClient.findUsers(List.of(userId)).get(userId) == null) {
+            throw new BusinessException(CommonErrorCode.NOT_FOUND, "사용자를 찾을 수 없습니다");
+        }
+        if (workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, userId)) {
+            return false;
+        }
+        workspaceMemberRepository.save(new WorkspaceMember(workspaceId, userId, WorkspaceRole.MEMBER, now()));
+        return true;
+    }
+
     /** REQ-016 (레거시). 소유자에게 알림 이벤트를 보낸다. 거절된 뒤에는 다시 요청할 수 있다. */
     @Transactional
     public JoinRequestResponse requestJoin(String token, Long userId) {
